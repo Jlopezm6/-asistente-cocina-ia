@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asistente de Cocina IA</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Asistente de Cocina IA</h1>
+        <p>Tu planificador nutricional con 4 modos inteligentes para cada necesidad</p>
+        
+        <!-- Selector de pestañas -->
+        <div class="tabs">
+            <button class="tab-button active" data-tab="receta-ingredientes">Receta por Ingredientes</button>
+            <button class="tab-button" data-tab="limpia-neveras">Limpia-Neveras</button>
+            <button class="tab-button" data-tab="adaptador-inteligente">Adaptador Inteligente</button>
+            <button class="tab-button" data-tab="plan-semanal">Plan Semanal</button>
+        </div>
+        
+        <!-- Contenido de la pestaña Receta por Ingredientes -->
+        <div id="receta-ingredientes" class="tab-content active">
+            <div class="mode-description">
+                <p>🥗 Introduce uno o varios ingredientes clave y obtén una receta perfecta</p>
+            </div>
+            
+            <div class="form-container">
+                <div class="input-group">
+                    <label for="ingredientes-principales">Ingredientes principales:</label>
+                    <textarea 
+                        id="ingredientes-principales" 
+                        placeholder="Ejemplo: pollo, tomates, cebolla..."
+                        rows="3"
+                    ></textarea>
+                </div>
+                
+                <div class="form-row">
+                    <div class="input-group half-width">
+                        <label for="personas-ingredientes">Número de personas:</label>
+                        <select id="personas-ingredientes">
+                            <option value="1">1 persona</option>
+                            <option value="2" selected>2 personas</option>
+                            <option value="3">3 personas</option>
+                            <option value="4">4 personas</option>
+                            <option value="5">5 personas</option>
+                            <option value="6">6 personas</option>
+                            <option value="7">7 personas</option>
+                            <option value="8">8 personas</option>
+                        </select>
+                    </div>
+                    
+                    <div class="input-group half-width">
+                        <label for="dieta-ingredientes">Tipo de dieta:</label>
+                        <select id="dieta-ingredientes">
+                            <option value="ninguna">Ninguna</option>
+                            <option value="vegetariana">Vegetariana</option>
+                            <option value="vegana">Vegana</option>
+                            <option value="keto">Keto</option>
+                            <option value="mediterranea">Mediterránea</option>
+                            <option value="paleo">Paleo</option>
+                            <option value="sin-gluten">Sin Gluten</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <button id="generar-ingredientes" type="button" class="generate-btn">Crear Receta</button>
+            </div>
+        </div>
+        
+        <!-- Contenido de la pestaña Limpia-Neveras -->
+        <div id="limpia-neveras" class="tab-content">
+            <div class="mode-description">
+                <p>🗄️ Lista todos los ingredientes que tienes disponibles para aprovecharlos al máximo</p>
+            </div>
+            
+            <div class="form-container">
+                <div class="input-group">
+                    <label for="ingredientes-nevera">Ingredientes que tienes en la nevera:</label>
+                    <textarea 
+                        id="ingredientes-nevera" 
+                        placeholder="Lista completa: pollo, arroz, tomates, cebolla, ajo, queso, leche, huevos, espinacas, zanahorias..."
+                        rows="6"
+                        class="large-textarea"
+                    ></textarea>
+                </div>
+                
+                <div class="form-row">
+                    <div class="input-group half-width">
+                        <label for="personas-limpia">Número de personas:</label>
+                        <select id="personas-limpia">
+                            <option value="1">1 persona</option>
+                            <option value="2" selected>2 personas</option>
+                            <option value="3">3 personas</option>
+                            <option value="4">4 personas</option>
+                            <option value="5">5 personas</option>
+                            <option value="6">6 personas</option>
+                            <option value="7">7 personas</option>
+                            <option value="8">8 personas</option>
+                        </select>
+                    </div>
+                    
+                    <div class="input-group half-width">
+                        <label for="dieta-limpia">Tipo de dieta:</label>
+                        <select id="dieta-limpia">
+                            <option value="ninguna">Ninguna</option>
+                            <option value="vegetariana">Vegetariana</option>
+                            <option value="vegana">Vegana</option>
+                            <option value="keto">Keto</option>
+                            <option value="mediterranea">Mediterránea</option>
+                            <option value="paleo">Paleo</option>
+                            <option value="sin-gluten">Sin Gluten</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <button id="generar-limpia" type="button" class="generate-btn">Limpiar Nevera</button>
+            </div>
+        </div>
+        
+        <!-- Contenido de la pestaña Adaptador Inteligente -->
+        <div id="adaptador-inteligente" class="tab-content">
+            <div class="mode-description">
+                <p>🔄 Pega una receta existente y solicita las modificaciones que necesites</p>
+            </div>
+            
+            <div class="form-container">
+                <div class="input-group">
+                    <label for="receta-original">Receta original:</label>
+                    <textarea 
+                        id="receta-original" 
+                        placeholder="Pega aquí la receta que quieres adaptar (ingredientes, cantidades, instrucciones)..."
+                        rows="6"
+                        class="large-textarea"
+                    ></textarea>
+                </div>
+                
+                <div class="input-group">
+                    <label for="cambios-solicitados">Cambios solicitados:</label>
+                    <textarea 
+                        id="cambios-solicitados" 
+                        placeholder="Ejemplo: hazla más saludable, sin gluten, para 6 personas, más picante..."
+                        rows="3"
+                    ></textarea>
+                </div>
+                
+                <div class="form-row">
+                    <div class="input-group half-width">
+                        <label for="personas-adaptador">Número de personas:</label>
+                        <select id="personas-adaptador">
+                            <option value="1">1 persona</option>
+                            <option value="2" selected>2 personas</option>
+                            <option value="3">3 personas</option>
+                            <option value="4">4 personas</option>
+                            <option value="5">5 personas</option>
+                            <option value="6">6 personas</option>
+                            <option value="7">7 personas</option>
+                            <option value="8">8 personas</option>
+                        </select>
+                    </div>
+                    
+                    <div class="input-group half-width">
+                        <label for="dieta-adaptador">Tipo de dieta:</label>
+                        <select id="dieta-adaptador">
+                            <option value="ninguna">Ninguna</option>
+                            <option value="vegetariana">Vegetariana</option>
+                            <option value="vegana">Vegana</option>
+                            <option value="keto">Keto</option>
+                            <option value="mediterranea">Mediterránea</option>
+                            <option value="paleo">Paleo</option>
+                            <option value="sin-gluten">Sin Gluten</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <button id="generar-adaptador" type="button" class="generate-btn">Adaptar Receta</button>
+            </div>
+        </div>
+        
+        <!-- Contenido de la pestaña Plan Semanal -->
+        <div id="plan-semanal" class="tab-content">
+            <div class="mode-description">
+                <p>📅 Crea un plan completo de comidas para 7 días con objetivos calóricos personalizados</p>
+            </div>
+            
+            <div class="form-container">
+                <div class="input-group">
+                    <label for="calorias-objetivo">Objetivo de calorías diarias (aprox.):</label>
+                    <input 
+                        type="number" 
+                        id="calorias-objetivo" 
+                        placeholder="Ej: 2000" 
+                        min="800" 
+                        max="5000" 
+                        step="50"
+                        class="calories-input"
+                    >
+                </div>
+                
+                <div class="input-group">
+                    <label>Comidas a planificar:</label>
+                    <div class="checkbox-group">
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="desayuno" name="comidas" value="desayuno" checked>
+                            <label for="desayuno" class="checkbox-label">🥐 Desayuno</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="comida" name="comidas" value="comida" checked>
+                            <label for="comida" class="checkbox-label">🍽️ Comida</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="merienda" name="comidas" value="merienda">
+                            <label for="merienda" class="checkbox-label">🥨 Merienda</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="cena" name="comidas" value="cena" checked>
+                            <label for="cena" class="checkbox-label">🌙 Cena</label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="input-group">
+                    <label for="preferencias-plan">Ingredientes base o preferencias:</label>
+                    <textarea 
+                        id="preferencias-plan" 
+                        placeholder="Ejemplo: basado en pollo y pescado, evitar lactosa, incluir muchas verduras..."
+                        rows="4"
+                    ></textarea>
+                </div>
+                
+                <div class="form-row">
+                    <div class="input-group half-width">
+                        <label for="personas-plan">Número de personas:</label>
+                        <select id="personas-plan">
+                            <option value="1">1 persona</option>
+                            <option value="2" selected>2 personas</option>
+                            <option value="3">3 personas</option>
+                            <option value="4">4 personas</option>
+                            <option value="5">5 personas</option>
+                            <option value="6">6 personas</option>
+                            <option value="7">7 personas</option>
+                            <option value="8">8 personas</option>
+                        </select>
+                    </div>
+                    
+                    <div class="input-group half-width">
+                        <label for="dieta-plan">Tipo de dieta:</label>
+                        <select id="dieta-plan">
+                            <option value="ninguna">Ninguna</option>
+                            <option value="vegetariana">Vegetariana</option>
+                            <option value="vegana">Vegana</option>
+                            <option value="keto">Keto</option>
+                            <option value="mediterranea">Mediterránea</option>
+                            <option value="paleo">Paleo</option>
+                            <option value="sin-gluten">Sin Gluten</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <button id="generar-plan" type="button" class="generate-btn">Generar Plan Semanal</button>
+                
+                <!-- Botón para exportar a CSV -->
+                <button id="exportar-csv" type="button" class="export-csv-btn" style="display: none;">
+                    📄 Exportar a CSV
+                </button>
+            </div>
+        </div>
+        
+        <!-- Área de respuesta -->
+        <div id="respuesta" class="respuesta"></div>
+        
+        <!-- Botón para copiar lista de compras -->
+        <button id="copiar-lista" type="button" class="copy-shopping-btn" style="display: none;">
+            📋 Copiar Lista de la Compra
+        </button>
+    </div>
+    
+    <script src="index.js"></script>
+</body>
+</html>

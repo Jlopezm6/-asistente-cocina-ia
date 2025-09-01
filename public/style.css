@@ -1,0 +1,658 @@
+/* Importar fuentes de Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Lato:wght@300;400;500;700&display=swap');
+
+/* Variables CSS para la paleta de colores */
+:root {
+    --color-fondo: #F8F9FA;
+    --color-principal: #2D6A4F;
+    --color-acento: #FF8C42;
+    --color-texto: #212529;
+    --color-texto-secundario: #6C757D;
+    --color-blanco: #FFFFFF;
+    --color-sombra: rgba(0, 0, 0, 0.08);
+    --color-sombra-hover: rgba(0, 0, 0, 0.12);
+    --color-borde: #DEE2E6;
+    --color-hover-suave: rgba(255, 140, 66, 0.1);
+    --color-fondo-secundario: #E9ECEF;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Lato', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    background-color: var(--color-fondo);
+    color: var(--color-texto);
+    line-height: 1.6;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 40px 20px;
+}
+
+.container {
+    background: var(--color-blanco);
+    padding: 50px;
+    border-radius: 20px;
+    box-shadow: 0 10px 40px var(--color-sombra);
+    width: 100%;
+    max-width: 900px;
+    text-align: center;
+    position: relative;
+}
+
+/* Títulos */
+h1 {
+    font-family: 'Poppins', sans-serif;
+    color: var(--color-principal);
+    margin-bottom: 15px;
+    font-size: 3rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+p {
+    font-family: 'Lato', sans-serif;
+    color: var(--color-texto-secundario);
+    margin-bottom: 40px;
+    font-size: 1.15rem;
+    font-weight: 400;
+}
+
+/* Estilos para pestañas */
+.tabs {
+    display: flex;
+    margin-bottom: 40px;
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: 0 4px 15px var(--color-sombra);
+    background: var(--color-fondo-secundario);
+    padding: 4px;
+}
+
+.tab-button {
+    flex: 1;
+    padding: 16px 20px;
+    border: none;
+    background: transparent;
+    color: var(--color-texto-secundario);
+    font-family: 'Poppins', sans-serif;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 12px;
+    position: relative;
+    letter-spacing: 0.01em;
+}
+
+.tab-button:hover {
+    background: var(--color-hover-suave);
+    color: var(--color-principal);
+    transform: translateY(-1px);
+}
+
+.tab-button.active {
+    background: var(--color-acento);
+    color: var(--color-blanco);
+    box-shadow: 0 4px 12px rgba(255, 140, 66, 0.3);
+    transform: translateY(-1px);
+}
+
+/* Contenido de pestañas */
+.tab-content {
+    display: none;
+    text-align: left;
+    animation: fadeIn 0.4s ease-in-out;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.mode-description {
+    background: linear-gradient(135deg, var(--color-fondo) 0%, #FFFFFF 100%);
+    padding: 20px;
+    border-radius: 12px;
+    margin-bottom: 30px;
+    text-align: center;
+    border: 1px solid var(--color-borde);
+}
+
+.mode-description p {
+    color: var(--color-principal);
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 500;
+    font-family: 'Lato', sans-serif;
+}
+
+.form-container {
+    margin-bottom: 40px;
+}
+
+.input-group {
+    margin-bottom: 30px;
+}
+
+.input-group label {
+    display: block;
+    margin-bottom: 10px;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+    color: var(--color-principal);
+    font-size: 1rem;
+    letter-spacing: 0.01em;
+}
+
+/* Fila de formulario para elementos lado a lado */
+.form-row {
+    display: flex;
+    gap: 25px;
+    margin-bottom: 30px;
+}
+
+.form-row .input-group {
+    margin-bottom: 0;
+}
+
+.half-width {
+    flex: 1;
+}
+
+/* Estilos para inputs */
+textarea {
+    width: 100%;
+    padding: 18px 20px;
+    border: 2px solid var(--color-borde);
+    border-radius: 12px;
+    font-size: 1rem;
+    font-family: 'Lato', sans-serif;
+    resize: vertical;
+    transition: all 0.3s ease;
+    line-height: 1.6;
+    background: var(--color-blanco);
+    color: var(--color-texto);
+}
+
+.large-textarea {
+    min-height: 140px;
+}
+
+textarea:focus {
+    outline: none;
+    border-color: var(--color-acento);
+    box-shadow: 0 0 0 4px rgba(255, 140, 66, 0.1);
+    transform: translateY(-1px);
+}
+
+textarea::placeholder {
+    color: var(--color-texto-secundario);
+    line-height: 1.5;
+    font-style: italic;
+}
+
+select {
+    width: 100%;
+    padding: 18px 20px;
+    border: 2px solid var(--color-borde);
+    border-radius: 12px;
+    font-size: 1rem;
+    font-family: 'Lato', sans-serif;
+    background: var(--color-blanco);
+    color: var(--color-texto);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23FF8C42' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 15px center;
+    background-size: 20px;
+    padding-right: 45px;
+}
+
+select:focus {
+    outline: none;
+    border-color: var(--color-acento);
+    box-shadow: 0 0 0 4px rgba(255, 140, 66, 0.1);
+    transform: translateY(-1px);
+}
+
+/* Estilos para input numérico de calorías */
+.calories-input {
+    width: 100%;
+    padding: 18px 20px;
+    border: 2px solid var(--color-borde);
+    border-radius: 12px;
+    font-size: 1.2rem;
+    font-family: 'Lato', sans-serif;
+    background: var(--color-blanco);
+    color: var(--color-texto);
+    transition: all 0.3s ease;
+    text-align: center;
+    font-weight: 600;
+}
+
+.calories-input:focus {
+    outline: none;
+    border-color: var(--color-acento);
+    box-shadow: 0 0 0 4px rgba(255, 140, 66, 0.1);
+    transform: translateY(-1px);
+}
+
+.calories-input::placeholder {
+    color: var(--color-texto-secundario);
+    font-weight: 400;
+}
+
+/* Estilos para checkboxes */
+.checkbox-group {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-top: 10px;
+}
+
+.checkbox-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    background: var(--color-fondo);
+    border: 2px solid var(--color-borde);
+    border-radius: 12px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.checkbox-item:hover {
+    background: var(--color-hover-suave);
+    border-color: var(--color-acento);
+    transform: translateY(-1px);
+}
+
+.checkbox-item input[type="checkbox"] {
+    margin: 0;
+    margin-right: 12px;
+    width: 20px;
+    height: 20px;
+    accent-color: var(--color-acento);
+    cursor: pointer;
+}
+
+.checkbox-label {
+    font-family: 'Lato', sans-serif;
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--color-texto);
+    cursor: pointer;
+    margin: 0;
+    user-select: none;
+}
+
+/* Botón de generar */
+.generate-btn {
+    background: linear-gradient(135deg, var(--color-acento) 0%, #E57125 100%);
+    color: var(--color-blanco);
+    border: none;
+    padding: 18px 40px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    font-family: 'Poppins', sans-serif;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    margin-top: 15px;
+    width: 100%;
+    letter-spacing: 0.02em;
+    box-shadow: 0 4px 15px rgba(255, 140, 66, 0.3);
+}
+
+.generate-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(255, 140, 66, 0.4);
+    background: linear-gradient(135deg, #FF8C42 0%, #D46020 100%);
+}
+
+.generate-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 4px 15px rgba(255, 140, 66, 0.3);
+}
+
+.generate-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: 0 4px 15px rgba(255, 140, 66, 0.2);
+}
+
+/* Área de respuesta */
+.respuesta {
+    background: var(--color-blanco);
+    border-radius: 15px;
+    padding: 30px;
+    text-align: left;
+    border: 1px solid var(--color-borde);
+    min-height: 80px;
+    display: none;
+    margin-top: 40px;
+    box-shadow: 0 6px 20px var(--color-sombra);
+}
+
+.respuesta.show {
+    display: block;
+    animation: slideIn 0.4s ease-out;
+}
+
+@keyframes slideIn {
+    from { 
+        opacity: 0; 
+        transform: translateY(20px); 
+    }
+    to { 
+        opacity: 1; 
+        transform: translateY(0); 
+    }
+}
+
+.receta-resultado {
+    text-align: left;
+}
+
+.receta-contenido {
+    margin-top: 20px;
+    line-height: 1.7;
+    font-family: 'Lato', sans-serif;
+}
+
+.error {
+    background: linear-gradient(135deg, #FFF5F5 0%, #FFFFFF 100%);
+    border: 2px solid #FED7D7;
+    border-radius: 12px;
+    padding: 25px;
+    text-align: center;
+}
+
+.error h3 {
+    color: #E53E3E;
+    margin-bottom: 10px;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+}
+
+.error p {
+    color: #718096;
+    font-family: 'Lato', sans-serif;
+}
+
+.respuesta h3 {
+    color: var(--color-principal);
+    margin-bottom: 20px;
+    font-size: 1.5rem;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 700;
+}
+
+.respuesta p {
+    color: var(--color-texto);
+    line-height: 1.7;
+    margin-bottom: 15px;
+    font-family: 'Lato', sans-serif;
+}
+
+.respuesta strong {
+    color: var(--color-principal);
+    font-weight: 600;
+}
+
+.loading {
+    text-align: center;
+    color: var(--color-principal);
+    font-style: italic;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 30px;
+    font-family: 'Lato', sans-serif;
+    font-size: 1.1rem;
+}
+
+.loading::before {
+    content: "🔄";
+    font-size: 1.5rem;
+    animation: spin 1.5s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* Mejoras visuales específicas para los 3 modos */
+#receta-ingredientes .mode-description {
+    background: linear-gradient(135deg, #F0FDF4 0%, #FFFFFF 100%);
+    border-color: rgba(45, 106, 79, 0.2);
+}
+
+#limpia-neveras .mode-description {
+    background: linear-gradient(135deg, #FFFBEB 0%, #FFFFFF 100%);
+    border-color: rgba(255, 140, 66, 0.2);
+}
+
+#adaptador-inteligente .mode-description {
+    background: linear-gradient(135deg, #F0F9FF 0%, #FFFFFF 100%);
+    border-color: rgba(59, 130, 246, 0.2);
+}
+
+#plan-semanal .mode-description {
+    background: linear-gradient(135deg, #FEF3FF 0%, #FFFFFF 100%);
+    border-color: rgba(168, 85, 247, 0.2);
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    body {
+        padding: 20px 15px;
+    }
+    
+    .container {
+        padding: 30px 25px;
+        margin: 0;
+        max-width: 100%;
+        border-radius: 15px;
+    }
+    
+    h1 {
+        font-size: 2.2rem;
+    }
+    
+    .form-row {
+        flex-direction: column;
+        gap: 0;
+    }
+    
+    .form-row .input-group {
+        margin-bottom: 30px;
+    }
+    
+    .tabs {
+        flex-direction: column;
+        padding: 3px;
+        gap: 3px;
+    }
+    
+    .tab-button {
+        border-radius: 8px;
+        padding: 14px 16px;
+        font-size: 0.9rem;
+    }
+    
+    .checkbox-group {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+    
+    .checkbox-item {
+        padding: 10px 14px;
+    }
+}
+
+@media (max-width: 480px) {
+    body {
+        padding: 15px 10px;
+    }
+    
+    .container {
+        padding: 25px 20px;
+    }
+    
+    h1 {
+        font-size: 1.9rem;
+    }
+    
+    p {
+        font-size: 1rem;
+    }
+    
+    .tabs {
+        margin-bottom: 30px;
+    }
+    
+    .tab-button {
+        padding: 12px 14px;
+        font-size: 0.9rem;
+    }
+    
+    textarea, select, .calories-input {
+        padding: 15px 16px;
+        font-size: 0.95rem;
+    }
+    
+    .calories-input {
+        font-size: 1.1rem;
+    }
+    
+    .generate-btn {
+        padding: 15px 30px;
+        font-size: 1rem;
+    }
+    
+    .respuesta {
+        padding: 25px;
+        margin-top: 30px;
+    }
+}
+
+/* Efectos adicionales para mejorar la experiencia */
+.container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--color-principal) 0%, var(--color-acento) 100%);
+    border-radius: 20px 20px 0 0;
+}
+
+/* Scroll suave para mejor UX */
+* {
+    scroll-behavior: smooth;
+}
+
+/* Focus visible para accesibilidad */
+/* Botón para copiar lista de compras */
+.copy-shopping-btn {
+    background: linear-gradient(135deg, var(--color-principal) 0%, #245c41 100%);
+    color: var(--color-blanco);
+    border: none;
+    padding: 14px 28px;
+    font-size: 1rem;
+    font-weight: 600;
+    font-family: 'Poppins', sans-serif;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    margin: 20px auto 0 auto;
+    display: block;
+    letter-spacing: 0.02em;
+    box-shadow: 0 4px 15px rgba(45, 106, 79, 0.3);
+}
+
+.copy-shopping-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(45, 106, 79, 0.4);
+    background: linear-gradient(135deg, #245c41 0%, #1d4835 100%);
+}
+
+.copy-shopping-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 4px 15px rgba(45, 106, 79, 0.3);
+}
+
+.copy-shopping-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.copy-shopping-btn.copied {
+    background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+    box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3);
+}
+
+/* Export CSV Button */
+.export-csv-btn {
+    background: linear-gradient(135deg, var(--color-acento) 0%, #e07535 100%);
+    color: var(--color-blanco);
+    border: none;
+    padding: 14px 28px;
+    font-size: 1rem;
+    font-weight: 600;
+    font-family: 'Poppins', sans-serif;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    margin: 12px auto 0 auto;
+    display: block;
+    letter-spacing: 0.02em;
+    box-shadow: 0 4px 15px rgba(255, 140, 66, 0.3);
+}
+
+.export-csv-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(255, 140, 66, 0.4);
+    background: linear-gradient(135deg, #e07535 0%, #cc6629 100%);
+}
+
+.export-csv-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 4px 15px rgba(255, 140, 66, 0.3);
+}
+
+.export-csv-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.export-csv-btn.exported {
+    background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+    box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3);
+}
+
+button:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+    outline: 2px solid var(--color-acento);
+    outline-offset: 2px;
+}
