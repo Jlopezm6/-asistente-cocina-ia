@@ -30,14 +30,15 @@ La interfaz debe presentar 4 modos de uso claros, idealmente como pestañas:
 -   **Selector de Porciones:** El usuario debe poder especificar para cuántas personas es la receta (selector de 1 a 8).
 -   **Selector de Dieta Ampliado:** El menú de dietas debe incluir: Ninguna, Vegetariana, Vegana, Keto, Mediterránea, Paleo y Sin Gluten.
 
-### Respuesta de la IA y Procesamiento en la App (¡ARQUITECTURA IMPORTANTE!):
--   **Para el modo "Plan Semanal", la IA debe devolver la respuesta estructurada como un objeto JSON válido.** Este JSON debe contener una lista de días, y para cada día, una lista de comidas con sus detalles (nombre, calorías, nutrientes, %VD, etc.) y también una lista de la compra consolidada.
+### Respuesta de la IA y Procesamiento en la App (¡ARQUITECTURA DE DOS PASOS!):
+-   **Para el modo "Plan Semanal" (Paso 1 - Generar Plan):** La primera llamada a la IA debe generar un JSON con el calendario-resumen (Día, Comida, Nombre de Receta, Nutrientes) y la Lista de la Compra.
+-   **Para el modo "Plan Semanal" (Paso 2 - Generar Receta a Demanda):** Cuando el usuario haga clic en el nombre de una receta del plan, se debe hacer una **segunda llamada a la IA** pidiendo únicamente la receta completa para ese plato.
 -   **Para los modos de receta única:** La respuesta puede ser en texto formateado (Markdown) e incluir la lista de la compra cuando sea aplicable.
 
 ### Funcionalidades Adicionales de la Interfaz (Pulido UX):
--   **Renderizado desde JSON:** El JavaScript del frontend (`index.js`) será responsable de leer el JSON del Plan Semanal y generar el HTML para mostrarlo de forma bonita en la web.
+-   **Plan Interactivo:** En la web, el plan semanal debe mostrarse con los nombres de las recetas como botones clicables. Al hacer clic, se mostrará la receta completa debajo del plan.
 -   **Botón de Copiar:** El botón para copiar la "Lista de la Compra" debe funcionar para todos los modos aplicables, conservando el formato.
--   **Botón de Exportar a CSV:** El JavaScript del frontend (`index.js`) leerá el JSON del Plan Semanal y generará un archivo CSV perfectamente formateado (con punto y coma como separador).
+-   **Botón de Descarga:** En el modo "Plan Semanal", debe haber un botón con el texto "Descargar Calendario Plan Semanal". Este botón leerá los datos del plan-resumen y generará un archivo CSV descargable.
 
 ---
 

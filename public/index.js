@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const generarPlanBtn = document.getElementById('generar-plan');
     const copiarListaBtn = document.getElementById('copiar-lista');
     const exportarCsvBtn = document.getElementById('exportar-csv');
+    const verTodasRecetasBtn = document.getElementById('ver-todas-recetas');
     
     // Inicializar funcionalidad de pestañas
     initializeTabs();
@@ -40,6 +41,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // Event listener para el botón de exportar CSV
     exportarCsvBtn.addEventListener('click', function() {
         exportarPlanCSV();
+    });
+    
+    // Event listener para el botón de ver todas las recetas
+    verTodasRecetasBtn.addEventListener('click', function() {
+        verTodasLasRecetas();
     });
     
     /**
@@ -369,19 +375,26 @@ document.addEventListener('DOMContentLoaded', function() {
         
         respuestaDiv.innerHTML = html;
         
+        // Añadir event listeners a los botones de receta (solo para plan semanal)
+        if (mode === 'plan-semanal') {
+            agregarEventListenersRecetas();
+        }
+        
         // Mostrar botones según el modo y contenido
         if (mode === 'plan-semanal' && window.planSemanalData && window.planSemanalData.listaCompra) {
-            // Plan Semanal: mostrar ambos botones
+            // Plan Semanal: mostrar todos los botones
             copiarListaBtn.style.display = 'block';
             exportarCsvBtn.style.display = 'block';
+            verTodasRecetasBtn.style.display = 'block';
         } else if ((mode === 'receta-ingredientes' && recetaTexto.includes('### Lista de la Compra'))) {
             // Receta por Ingredientes: solo botón copiar
             copiarListaBtn.style.display = 'block';
             exportarCsvBtn.style.display = 'none';
         } else {
-            // Otros modos: ocultar ambos botones
+            // Otros modos: ocultar todos los botones
             copiarListaBtn.style.display = 'none';
             exportarCsvBtn.style.display = 'none';
+            verTodasRecetasBtn.style.display = 'none';
         }
     }
     
@@ -561,9 +574,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="comida-item">
                         <h5>${emojiComida[comida.tipo] || '🍽️'} ${comida.tipo}</h5>
                         <div class="comida-details">
-                            <p><strong>📋 Receta:</strong> ${comida.nombre}</p>
-                            ${comida.ingredientes ? `<p><strong>🛒 Ingredientes:</strong> ${comida.ingredientes.join(', ')}</p>` : ''}
-                            ${comida.preparacion ? `<p><strong>👨‍🍳 Preparación:</strong> ${comida.preparacion}</p>` : ''}
+                            <p><strong>📋 Receta:</strong> <button class="receta-btn" data-receta="${comida.nombre}" data-personas="${planData.personas || 2}" data-dieta="${planData.dieta || 'ninguna'}">${comida.nombre}</button></p>
                             <p><strong>📊 Nutrición:</strong> ${comida.calorias} kcal | Proteínas: ${comida.proteinas}g | Grasas: ${comida.grasas}g | Carbohidratos: ${comida.carbohidratos}g</p>
                             ${comida.vitaminas ? `<p><strong>💎 Destacados:</strong> ${comida.vitaminas}</p>` : ''}
                         </div>
@@ -699,4 +710,298 @@ document.addEventListener('DOMContentLoaded', function() {
             alert('Error al exportar el plan. Por favor, inténtalo de nuevo.');
         }
     }
+    
+    /**
+     * Añade event listeners a los botones de recetas del plan semanal
+     */
+    function agregarEventListenersRecetas() {
+        const botonesReceta = document.querySelectorAll('.receta-btn');
+        botonesReceta.forEach(boton => {
+            boton.addEventListener('click', async function() {
+                const nombreReceta = this.getAttribute('data-receta');
+                const personas = this.getAttribute('data-personas');
+                const dieta = this.getAttribute('data-dieta');
+                
+                await obtenerRecetaIndividual(nombreReceta, personas, dieta);
+            });
+        });
+    }
+    
+    /**
+     * Obtiene una receta individual del backend
+     * @param {string} nombreReceta - Nombre de la receta
+     * @param {string} personas - Número de personas
+     * @param {string} dieta - Tipo de dieta
+     */
+    async function obtenerRecetaIndividual(nombreReceta, personas, dieta) {
+        try {
+            // Mostrar estado de carga en la receta
+            mostrarCargandoReceta(nombreReceta);
+            
+            const response = await fetch('/api/get-recipe', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    nombreReceta: nombreReceta,
+                    personas: personas,
+                    dieta: dieta
+                })
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            mostrarRecetaDetallada(nombreReceta, result.receta);
+            
+        } catch (error) {
+            console.error('Error obteniendo receta individual:', error);
+            mostrarErrorReceta(nombreReceta, 'Error al cargar la receta. Por favor, inténtalo de nuevo.');
+        }
+    }
+    
+    /**
+     * Muestra estado de carga para una receta específica
+     * @param {string} nombreReceta - Nombre de la receta
+     */
+    function mostrarCargandoReceta(nombreReceta) {
+        // Encontrar o crear contenedor de receta detallada
+        let detalleContainer = document.getElementById('receta-detalle');
+        if (!detalleContainer) {
+            detalleContainer = document.createElement('div');
+            detalleContainer.id = 'receta-detalle';
+            detalleContainer.className = 'receta-detalle-container';
+            respuestaDiv.appendChild(detalleContainer);
+        }
+        
+        detalleContainer.innerHTML = `
+            <div class="receta-detallada">
+                <div class="receta-detalle-header">
+                    <h4>🍽️ ${nombreReceta}</h4>
+                    <button class="cerrar-receta" onclick="cerrarRecetaDetalle()">✖</button>
+                </div>
+                <div class="loading">Cargando receta completa...</div>
+            </div>
+        `;
+        
+        // Scroll suave hacia la receta
+        detalleContainer.scrollIntoView({ behavior: 'smooth' });
+    }
+    
+    /**
+     * Muestra la receta detallada
+     * @param {string} nombreReceta - Nombre de la receta
+     * @param {string} recetaTexto - Contenido de la receta
+     */
+    function mostrarRecetaDetallada(nombreReceta, recetaTexto) {
+        const detalleContainer = document.getElementById('receta-detalle');
+        if (!detalleContainer) return;
+        
+        detalleContainer.innerHTML = `
+            <div class="receta-detallada">
+                <div class="receta-detalle-header">
+                    <h4>🍽️ ${nombreReceta}</h4>
+                    <button class="cerrar-receta" onclick="cerrarRecetaDetalle()">✖</button>
+                </div>
+                <div class="receta-detalle-contenido">
+                    ${formatearReceta(recetaTexto)}
+                </div>
+            </div>
+        `;
+    }
+    
+    /**
+     * Muestra error al cargar una receta
+     * @param {string} nombreReceta - Nombre de la receta
+     * @param {string} mensaje - Mensaje de error
+     */
+    function mostrarErrorReceta(nombreReceta, mensaje) {
+        const detalleContainer = document.getElementById('receta-detalle');
+        if (!detalleContainer) return;
+        
+        detalleContainer.innerHTML = `
+            <div class="receta-detallada">
+                <div class="receta-detalle-header">
+                    <h4>❌ Error - ${nombreReceta}</h4>
+                    <button class="cerrar-receta" onclick="cerrarRecetaDetalle()">✖</button>
+                </div>
+                <div class="error-contenido">
+                    <p>${mensaje}</p>
+                </div>
+            </div>
+        `;
+    }
+    
+    /**
+     * Cierra el detalle de receta
+     */
+    window.cerrarRecetaDetalle = function() {
+        const detalleContainer = document.getElementById('receta-detalle');
+        if (detalleContainer) {
+            detalleContainer.remove();
+        }
+    }
+    
+    /**
+     * Ve todas las recetas del plan semanal progresivamente
+     */
+    async function verTodasLasRecetas() {
+        if (!window.planSemanalData || !window.planSemanalData.planSemanal) {
+            alert('No hay un plan semanal válido para mostrar las recetas');
+            return;
+        }
+        
+        // Cambiar estado del botón
+        const textoOriginal = verTodasRecetasBtn.textContent;
+        verTodasRecetasBtn.textContent = '⏳ Cargando Recetas...';
+        verTodasRecetasBtn.disabled = true;
+        
+        try {
+            // Crear contenedor para todas las recetas
+            let todasRecetasContainer = document.getElementById('todas-recetas');
+            if (!todasRecetasContainer) {
+                todasRecetasContainer = document.createElement('div');
+                todasRecetasContainer.id = 'todas-recetas';
+                todasRecetasContainer.className = 'todas-recetas-container';
+                respuestaDiv.appendChild(todasRecetasContainer);
+            }
+            
+            // Limpiar contenedor
+            todasRecetasContainer.innerHTML = `
+                <div class="todas-recetas-header">
+                    <h3>🍽️ Todas las Recetas del Plan Semanal</h3>
+                    <button class="cerrar-todas-recetas" onclick="cerrarTodasRecetas()">✖</button>
+                </div>
+                <div id="recetas-lista" class="recetas-lista"></div>
+            `;
+            
+            const recetasLista = document.getElementById('recetas-lista');
+            
+            // Recopilar todas las recetas únicas
+            const recetasUnicas = new Set();
+            const planData = window.planSemanalData;
+            
+            planData.planSemanal.forEach(diaData => {
+                diaData.comidas.forEach(comida => {
+                    recetasUnicas.add(comida.nombre);
+                });
+            });
+            
+            const recetasArray = Array.from(recetasUnicas);
+            let contador = 0;
+            
+            // Procesar recetas una por una
+            for (const nombreReceta of recetasArray) {
+                contador++;
+                
+                // Mostrar placeholder de carga para esta receta
+                const recetaPlaceholder = document.createElement('div');
+                recetaPlaceholder.className = 'receta-item-loading';
+                recetaPlaceholder.id = `loading-${contador}`;
+                recetaPlaceholder.innerHTML = `
+                    <div class="receta-item-header loading-header">
+                        <h4>🔄 ${nombreReceta}</h4>
+                        <span class="receta-contador">${contador}/${recetasArray.length}</span>
+                    </div>
+                    <div class="loading-content">Cargando receta...</div>
+                `;
+                
+                recetasLista.appendChild(recetaPlaceholder);
+                
+                // Scroll suave al elemento que se está cargando
+                recetaPlaceholder.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                
+                try {
+                    // Llamar a la API para obtener esta receta
+                    const response = await fetch('/api/get-recipe', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            nombreReceta: nombreReceta,
+                            personas: planData.personas || 2,
+                            dieta: planData.dieta || 'ninguna'
+                        })
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    
+                    const result = await response.json();
+                    
+                    // Reemplazar placeholder con contenido real
+                    recetaPlaceholder.className = 'receta-item-completa';
+                    recetaPlaceholder.innerHTML = `
+                        <div class="receta-item-header">
+                            <h4>✅ ${nombreReceta}</h4>
+                            <span class="receta-contador">${contador}/${recetasArray.length}</span>
+                        </div>
+                        <div class="receta-item-contenido">
+                            ${formatearReceta(result.receta)}
+                        </div>
+                    `;
+                    
+                } catch (error) {
+                    console.error(`Error cargando receta ${nombreReceta}:`, error);
+                    
+                    // Mostrar error en el placeholder
+                    recetaPlaceholder.className = 'receta-item-error';
+                    recetaPlaceholder.innerHTML = `
+                        <div class="receta-item-header error-header">
+                            <h4>❌ ${nombreReceta}</h4>
+                            <span class="receta-contador">${contador}/${recetasArray.length}</span>
+                        </div>
+                        <div class="error-content">Error al cargar esta receta</div>
+                    `;
+                }
+                
+                // Pequeña pausa entre recetas para mejor UX
+                if (contador < recetasArray.length) {
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                }
+            }
+            
+            // Actualizar texto del botón cuando termine
+            verTodasRecetasBtn.textContent = '✅ Recetas Cargadas';
+            verTodasRecetasBtn.classList.add('completed');
+            
+            // Restaurar botón después de unos segundos
+            setTimeout(() => {
+                verTodasRecetasBtn.textContent = textoOriginal;
+                verTodasRecetasBtn.classList.remove('completed');
+                verTodasRecetasBtn.disabled = false;
+            }, 3000);
+            
+        } catch (error) {
+            console.error('Error en verTodasLasRecetas:', error);
+            alert('Error al cargar las recetas. Por favor, inténtalo de nuevo.');
+            
+            // Restaurar botón en caso de error
+            verTodasRecetasBtn.textContent = textoOriginal;
+            verTodasRecetasBtn.disabled = false;
+        }
+    }
+    
+    /**
+     * Cierra el contenedor de todas las recetas
+     */
+    window.cerrarTodasRecetas = function() {
+        const todasRecetasContainer = document.getElementById('todas-recetas');
+        if (todasRecetasContainer) {
+            todasRecetasContainer.remove();
+        }
+        
+        // Restaurar botón si está en estado completado
+        if (verTodasRecetasBtn.classList.contains('completed')) {
+            verTodasRecetasBtn.textContent = '🍽️ Ver Todas las Recetas';
+            verTodasRecetasBtn.classList.remove('completed');
+            verTodasRecetasBtn.disabled = false;
+        }
+    }
+    
 });

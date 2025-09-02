@@ -299,8 +299,6 @@ Responde ÚNICAMENTE con un objeto JSON válido sin texto adicional. Estructura 
         {
           "tipo": "Desayuno",
           "nombre": "Avena con frutas y nueces",
-          "ingredientes": ["250ml leche avena", "50g avena", "1 plátano", "20g nueces"],
-          "preparacion": "Calentar leche, añadir avena, cocinar 5 min. Servir con plátano y nueces.",
           "calorias": 320,
           "proteinas": 12,
           "grasas": 8,
@@ -344,9 +342,55 @@ REQUISITOS CRÍTICOS:
 1. JSON válido sin texto antes o después
 2. Incluir los 7 días completos
 3. Solo comidas seleccionadas: ${comidasTexto}
-4. Valores nutricionales realistas (números enteros)
-5. Lista de compra consolidada con cantidades totales para ${personas} ${personas === '1' ? 'persona' : 'personas'}
-6. Incluir porcentajes VD para vitaminas/minerales principales`;
+4. Para cada comida: SOLO nombre de receta y datos nutricionales (NO incluir ingredientes ni preparación)
+5. Valores nutricionales realistas (números enteros)
+6. Lista de compra consolidada con cantidades totales para ${personas} ${personas === '1' ? 'persona' : 'personas'}
+7. Incluir porcentajes VD para vitaminas/minerales principales`;
+
+    return prompt;
+}
+
+function construirPromptRecetaIndividual(nombreReceta, personas, dieta) {
+    let prompt = `Eres un chef experto especializado en recetas detalladas. Necesito que generes una receta completa para "${nombreReceta}".
+
+PARÁMETROS:
+- NOMBRE DE LA RECETA: ${nombreReceta}
+- NÚMERO DE PERSONAS: ${personas}
+- TIPO DE DIETA: ${dieta}
+
+INSTRUCCIONES:
+- Genera la receta completa con ingredientes exactos y preparación detallada
+- Ajusta todas las cantidades exactamente para ${personas} ${personas === '1' ? 'persona' : 'personas'}
+- ${dieta !== 'ninguna' ? `La receta DEBE ser completamente compatible con una dieta ${dieta}` : 'Sin restricciones dietéticas específicas'}
+- Incluye información nutricional completa con porcentajes VD
+
+FORMATO DE RESPUESTA REQUERIDO:
+**🍳 ${nombreReceta}**
+
+**👥 Porciones:** ${personas} ${personas === '1' ? 'persona' : 'personas'}
+
+**📋 Ingredientes:**
+[Lista detallada con cantidades exactas ajustadas para ${personas} ${personas === '1' ? 'persona' : 'personas'}]
+
+**⏱️ Tiempo de preparación:** [X minutos]
+**⏱️ Tiempo de cocción:** [X minutos]
+**⏱️ Tiempo total:** [X minutos]
+
+**🔥 Instrucciones:**
+[Pasos numerados claros y detallados]
+
+**📊 INFORMACIÓN NUTRICIONAL (por porción):**
+- **Calorías aproximadas:** [X kcal]
+- **Proteínas:** [X g]
+- **Grasas:** [X g] 
+- **Carbohidratos:** [X g]
+- **Fibra:** [X g]
+- **Vitaminas y Minerales Destacados:** [Ejemplo: Vitamina C: 45% VD, Hierro: 15% VD, Calcio: 20% VD]
+
+**💡 Consejos del Chef:**
+[1-2 consejos útiles para perfeccionar la receta]
+
+IMPORTANTE: La información nutricional es OBLIGATORIA y debe ser un cálculo aproximado realista basado en los ingredientes utilizados. Incluir siempre el porcentaje del Valor Diario Recomendado (%VD) para las vitaminas y minerales más importantes.`;
 
     return prompt;
 }
@@ -383,6 +427,34 @@ async function llamarGeminiAPI(prompt, apiKey) {
         throw new Error('Respuesta inesperada de la API de Gemini');
     }
 }
+
+app.post('/api/get-recipe', async (req, res) => {
+    try {
+        const { nombreReceta, personas, dieta } = req.body;
+
+        // Validación
+        if (!nombreReceta) {
+            return res.status(400).json({ error: 'Nombre de receta es requerido' });
+        }
+
+        if (!personas || !dieta) {
+            return res.status(400).json({ error: 'Número de personas y dieta son requeridos' });
+        }
+
+        const apiKey = process.env.GEMINI_API_KEY;
+        if (!apiKey) {
+            return res.status(500).json({ error: 'API key no configurada' });
+        }
+
+        const prompt = construirPromptRecetaIndividual(nombreReceta, personas, dieta);
+        const receta = await llamarGeminiAPI(prompt, apiKey);
+
+        res.json({ receta });
+    } catch (error) {
+        console.error('Error generando receta individual:', error);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
+});
 
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
