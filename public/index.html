@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Asistente de Cocina IA</title>
     <link rel="stylesheet" href="style.css">
+    <!-- html2pdf.js library for HTML to PDF conversion -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
     <div class="container">
@@ -259,9 +261,9 @@
                 
                 <button id="generar-plan" type="button" class="generate-btn">Generar Plan Semanal</button>
                 
-                <!-- Botón para exportar a CSV -->
-                <button id="exportar-csv" type="button" class="export-csv-btn" style="display: none;">
-                    📄 Descargar Calendario Plan Semanal
+                <!-- Botón para exportar calendario a PDF -->
+                <button id="exportar-calendario-pdf" type="button" class="export-calendar-pdf-btn" style="display: none;">
+                    📅 Descargar Calendario en PDF
                 </button>
             </div>
         </div>
@@ -278,7 +280,19 @@
         <button id="ver-todas-recetas" type="button" class="view-all-recipes-btn" style="display: none;">
             🍽️ Ver Todas las Recetas
         </button>
+        
+        <!-- Botón para exportar recetario en PDF -->
+        <button id="exportar-recetario-pdf" type="button" class="export-recipe-pdf-btn" style="display: none;">
+            📖 Descargar Recetario en PDF
+        </button>
     </div>
+    
+    <!-- jsPDF library for PDF generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <!-- Hidden PDF Templates -->
+    <div id="pdf-calendario-template" style="display: none;"></div>
+    <div id="pdf-recetario-template" style="display: none;"></div>
     
     <script src="index.js"></script>
 </body>
