@@ -26,21 +26,21 @@ La interfaz debe presentar 4 modos de uso claros, idealmente como pestañas:
         -   `Checkboxes` (casillas de verificación) para seleccionar las comidas deseadas (Desayuno, Comida, Merienda, Cena).
         -   Un `textarea` para "Ingredientes Base o Preferencias".
 
-### Opciones Comunes para todos los modes:
+### Opciones Comunes para todos los modos:
 -   **Selector de Porciones:** El usuario debe poder especificar para cuántas personas es la receta (selector de 1 a 8).
 -   **Selector de Dieta Ampliado:** El menú de dietas debe incluir: Ninguna, Vegetariana, Vegana, Keto, Mediterránea, Paleo y Sin Gluten.
 
 ### Respuesta de la IA y Procesamiento en la App (ARQUITECTURA DE DOS PASOS):
--   **Para el modo "Plan Semanal" (Paso 1 - Generar Plan):** La primera llamada a la IA debe generar un JSON con el calendario-resumen (Día, Comida, Nombre de Receta, Nutrientes) y la Lista de la Compra.
--   **Para el modo "Plan Semanal" (Paso 2 - Generar Receta a Demanda):** Cuando el usuario haga clic en el nombre de una receta del plan, se debe hacer una **segunda llamada a la IA** pidiendo únicamente la receta completa para ese plato.
--   **Para los modos de receta única:** La respuesta puede ser en texto formateado (Markdown) e incluir la lista de la compra cuando sea aplicable.
+-   **Para el modo "Plan Semanal" (Paso 1 - Generar Plan):** La primera llamada a la IA debe generar un JSON con el calendario-resumen y la Lista de la Compra.
+-   **Para el modo "Plan Semanal" (Paso 2 - Generar Receta a Demanda):** Se hace una segunda llamada a la IA pidiendo únicamente la receta completa.
+-   **Para los modos de receta única:** La respuesta puede ser en texto formateado (Markdown) e incluir la lista de la compra.
 
 ### Funcionalidades Adicionales de la Interfaz (Pulido UX):
--   **Plan Interactivo y "Ver Todas":** El plan semanal se muestra con recetas clicables y un botón "Ver Todas las Recetas" para cargarlas dinámicamente.
+-   **Plan Interactivo y "Ver Todas":** El plan semanal se muestra con recetas clicables y un botón "Ver Todas las Recetas".
 -   **Botón de Copiar:** Copia la "Lista de la Compra" conservando el formato.
--   **DOS Botones de Descarga en PDF Separados:**
-    1.  **Botón "Descargar Calendario en PDF":** Debe generar un PDF de una página, visualmente atractivo (estilo rejilla, como el ejemplo), usando nuestra Guía de Estilo y mostrando solo el resumen del plan semanal.
-    2.  **Botón "Descargar Recetario en PDF":** Debe generar un PDF de múltiples páginas, bien formateado, que contenga únicamente las recetas completas de todo el plan semanal.
+-   **DOS Botones de Descarga en PDF Separados (Usando el método HTML a PDF):**
+    1.  **Botón "Descargar Calendario en PDF":** Debe generar un PDF de una página en **orientación apaisada (horizontal)**. La tabla-resumen del plan debe incluir los **datos nutricionales principales** (Calorías, Proteínas, Grasas, Carbohidratos). La generación no debe afectar visualmente a la página principal.
+    2.  **Botón "Descargar Recetario en PDF":** Debe generar un PDF de múltiples páginas con las recetas completas.
 
 ---
 

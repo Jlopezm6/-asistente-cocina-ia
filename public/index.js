@@ -1,153 +1,205 @@
-document.addEventListener('DOMContentLoaded', function() {
-    // === REFERENCIAS A ELEMENTOS DEL DOM ===
-    const tabButtons = document.querySelectorAll('.tab-button');
+document.addEventListener('DOMContentLoaded', () => {
+    // --- REFERENCIAS ---
+    const tabs = document.querySelectorAll('.tab-button');
     const tabContents = document.querySelectorAll('.tab-content');
-    const respuestaDiv = document.getElementById('respuesta');
-    
-    // Botones de generar para cada modo
-    const generarIngredientesBtn = document.getElementById('generar-ingredientes');
-    const generarLimpiaBtn = document.getElementById('generar-limpia');
-    const generarAdaptadorBtn = document.getElementById('generar-adaptador');
-    const generarPlanBtn = document.getElementById('generar-plan');
-    
-    // Botones de acciones para Plan Semanal
-    const copiarListaBtn = document.getElementById('copiar-lista');
-    const exportarCalendarioPdfBtn = document.getElementById('exportar-calendario-pdf');
-    const verTodasRecetasBtn = document.getElementById('ver-todas-recetas');
-    const exportarRecetarioPdfBtn = document.getElementById('exportar-recetario-pdf');
-    
-    // === INICIALIZACIÓN ===
-    initializeTabs();
-    initializeEventListeners();
-    
-    // === 1. LÓGICA PARA LAS 4 PESTAÑAS ===
-    
-    /**
-     * Inicializa la funcionalidad de pestañas
-     */
-    function initializeTabs() {
-        tabButtons.forEach(button => {
-            button.addEventListener('click', function() {
-                const targetTab = this.getAttribute('data-tab');
-                switchTab(targetTab);
-            });
+    const generateBtn = document.getElementById('generate-button');
+    const responseDiv = document.getElementById('response');
+    const pdfTemplate = document.getElementById('pdf-template');
+
+    let currentMode = 'receta-ingredientes';
+
+    // --- INICIALIZACIÓN ---
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            currentMode = tab.dataset.tab;
+            tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === currentMode));
+            tabContents.forEach(c => c.classList.toggle('active', c.id === currentMode));
+            responseDiv.innerHTML = '';
         });
-    }
+    });
+
+    generateBtn.addEventListener('click', handleGenerate);
     
-    /**
-     * Cambia entre pestañas
-     */
-    function switchTab(targetTab) {
-        // Remover clase active de todos los botones y contenidos
-        tabButtons.forEach(btn => btn.classList.remove('active'));
-        tabContents.forEach(content => content.classList.remove('active'));
+    // TEMPORAL: Función de prueba para PDF
+    window.testPDF = async function() {
+        console.log('🧪 Probando PDF simple...');
         
-        // Activar el botón y contenido correspondiente
-        document.querySelector(`[data-tab="${targetTab}"]`).classList.add('active');
-        document.getElementById(targetTab).classList.add('active');
+        try {
+            const response = await fetch('/test-pdf');
+            const htmlSimple = await response.text();
+            
+            const pdfTemplate = document.getElementById('pdf-template');
+            pdfTemplate.innerHTML = htmlSimple;
+            pdfTemplate.style.display = 'block';
+            pdfTemplate.style.visibility = 'visible';
+            
+            const options = {
+                margin: 0.5,
+                filename: 'test-calendario.pdf',
+                html2canvas: { 
+                    scale: 1,
+                    backgroundColor: '#ffffff'
+                },
+                jsPDF: { 
+                    unit: 'in',
+                    format: 'a4',
+                    orientation: 'landscape' 
+                }
+            };
+            
+            await new Promise(resolve => setTimeout(resolve, 500));
+            await html2pdf().set(options).from(pdfTemplate).save();
+            
+            pdfTemplate.style.display = 'none';
+            pdfTemplate.innerHTML = '';
+            
+            console.log('✅ PDF de prueba generado');
+        } catch (error) {
+            console.error('❌ Error en PDF de prueba:', error);
+        }
+    };
+
+    // --- LÓGICA PRINCIPAL ---
+    async function handleGenerate() {
+        const formData = collectFormData(currentMode);
         
-        // Ocultar respuesta al cambiar de pestaña
-        respuestaDiv.classList.remove('show');
-        ocultarBotonesAccion();
-    }
-    
-    // === 2. EVENT LISTENERS Y LÓGICA DE BOTONES GENERAR ===
-    
-    /**
-     * Inicializa todos los event listeners
-     */
-    function initializeEventListeners() {
-        // Botones de generar para cada modo
-        generarIngredientesBtn.addEventListener('click', () => handleGenerate('receta-ingredientes'));
-        generarLimpiaBtn.addEventListener('click', () => handleGenerate('limpia-neveras'));
-        generarAdaptadorBtn.addEventListener('click', () => handleGenerate('adaptador-inteligente'));
-        generarPlanBtn.addEventListener('click', () => handleGenerate('plan-semanal'));
-        
-        // Botones de acciones para Plan Semanal
-        copiarListaBtn.addEventListener('click', copiarListaCompra);
-        exportarCalendarioPdfBtn.addEventListener('click', exportarCalendarioPDF);
-        verTodasRecetasBtn.addEventListener('click', verTodasLasRecetas);
-        exportarRecetarioPdfBtn.addEventListener('click', exportarRecetarioPDF);
-    }
-    
-    /**
-     * Detecta el modo activo y llama al backend
-     */
-    async function handleGenerate(mode) {
-        const data = collectFormData(mode);
-        
-        // Validar datos
-        if (!validateFormData(data, mode)) {
+        // Validar datos básicos
+        if (!validateFormData(formData, currentMode)) {
             return;
         }
         
-        // Mostrar estado de carga
-        mostrarCargando(mode);
-        
+        setLoading(true);
+
         try {
-            await generarReceta(data, mode);
+            const response = await fetch('/api/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData),
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            
+            const responseData = await response.json();
+            let resultText = responseData.resultado;
+            
+            // Limpiar markdown si existe
+            if (resultText.startsWith('```json')) {
+                resultText = resultText.substring(7, resultText.length - 3).trim();
+            }
+            
+            const data = JSON.parse(resultText);
+            
+            // Almacenar datos para uso posterior
+            window.lastResponseData = data;
+            window.lastFormData = formData; // Almacenar formData para PDFs
+            
+            // Renderizar respuesta según el modo
+            renderResponse(data, currentMode, formData);
+
         } catch (error) {
-            console.error('Error:', error);
-            mostrarError('Error al generar la receta. Por favor, inténtalo de nuevo.');
+            console.error('Error en la generación:', error);
+            
+            let errorMessage = 'Error desconocido';
+            if (error.message.includes('503')) {
+                errorMessage = '🔄 El servicio de IA está temporalmente sobrecargado. Por favor, espera unos minutos e inténtalo de nuevo.';
+            } else if (error.message.includes('429')) {
+                errorMessage = '⏰ Demasiadas peticiones. Por favor, espera 30 segundos e inténtalo de nuevo.';
+            } else if (error.message.includes('500')) {
+                errorMessage = '⚠️ Error interno del servidor. Por favor, inténtalo de nuevo.';
+            } else {
+                errorMessage = `❌ Error: ${error.message}`;
+            }
+            
+            responseDiv.innerHTML = `<div class="error">${errorMessage}</div>`;
         } finally {
-            ocultarCargando(mode);
+            setLoading(false);
         }
     }
-    
-    /**
-     * Recopila los datos del formulario según el modo activo
-     */
+
     function collectFormData(mode) {
+        const formData = { mode: mode };
+        
+        // Recolectar opciones comunes (personas y dieta)
+        const personasSelect = document.getElementById('personas');
+        const dietaSelect = document.getElementById('dieta');
+        
+        if (personasSelect) {
+            formData.personas = personasSelect.value;
+        }
+        
+        if (dietaSelect) {
+            formData.dieta = dietaSelect.value;
+        }
+        
+        // Recolectar datos específicos según el modo
         switch (mode) {
             case 'receta-ingredientes':
-                return {
-                    mode: 'receta-ingredientes',
-                    ingredientesPrincipales: document.getElementById('ingredientes-principales').value.trim(),
-                    personas: document.getElementById('personas-ingredientes').value,
-                    dieta: document.getElementById('dieta-ingredientes').value
-                };
+                const ingredientesPrincipales = document.getElementById('ingredientes-principales');
+                if (ingredientesPrincipales) {
+                    formData.ingredientesPrincipales = ingredientesPrincipales.value.trim();
+                }
+                break;
                 
             case 'limpia-neveras':
-                return {
-                    mode: 'limpia-neveras',
-                    ingredientes: document.getElementById('ingredientes-nevera').value.trim(),
-                    personas: document.getElementById('personas-limpia').value,
-                    dieta: document.getElementById('dieta-limpia').value
-                };
+                const ingredientesNevera = document.getElementById('ingredientes-nevera');
+                if (ingredientesNevera) {
+                    formData.ingredientes = ingredientesNevera.value.trim();
+                }
+                break;
                 
             case 'adaptador-inteligente':
-                return {
-                    mode: 'adaptador-inteligente',
-                    recetaOriginal: document.getElementById('receta-original').value.trim(),
-                    cambiosSolicitados: document.getElementById('cambios-solicitados').value.trim(),
-                    personas: document.getElementById('personas-adaptador').value,
-                    dieta: document.getElementById('dieta-adaptador').value
-                };
+                const recetaOriginal = document.getElementById('receta-original');
+                const cambiosSolicitados = document.getElementById('cambios-solicitados');
+                if (recetaOriginal) {
+                    formData.recetaOriginal = recetaOriginal.value.trim();
+                }
+                if (cambiosSolicitados) {
+                    formData.cambiosSolicitados = cambiosSolicitados.value.trim();
+                }
+                break;
                 
             case 'plan-semanal':
+                const caloriasObjetivo = document.getElementById('calorias-objetivo');
+                const preferenciasPlan = document.getElementById('preferencias-plan');
+                
+                if (caloriasObjetivo) {
+                    formData.caloriasObjetivo = caloriasObjetivo.value;
+                }
+                
+                if (preferenciasPlan) {
+                    formData.preferencias = preferenciasPlan.value.trim();
+                }
+                
+                // Recolectar checkboxes de comidas
                 const comidasSeleccionadas = [];
-                const checkboxes = document.querySelectorAll('input[name="comidas"]:checked');
+                const checkboxes = document.querySelectorAll('input[name="comidas"]');
                 checkboxes.forEach(checkbox => {
-                    comidasSeleccionadas.push(checkbox.value);
+                    if (checkbox.checked) {
+                        comidasSeleccionadas.push(checkbox.value);
+                    }
                 });
-                
-                return {
-                    mode: 'plan-semanal',
-                    caloriasObjetivo: document.getElementById('calorias-objetivo').value,
-                    comidasSeleccionadas: comidasSeleccionadas,
-                    preferencias: document.getElementById('preferencias-plan').value.trim(),
-                    personas: document.getElementById('personas-plan').value,
-                    dieta: document.getElementById('dieta-plan').value
-                };
-                
-            default:
-                return {};
+                formData.comidasSeleccionadas = comidasSeleccionadas;
+                break;
         }
+        
+        console.log('📋 Datos recolectados:', formData);
+        console.log('🔍 Modo:', formData.mode);
+        console.log('👥 Personas:', formData.personas);
+        console.log('🍽️ Dieta:', formData.dieta);
+        
+        // Validación específica por modo
+        if (formData.mode === 'receta-ingredientes' && !formData.ingredientesPrincipales) {
+            console.error('❌ Error: ingredientesPrincipales vacío');
+        }
+        if (formData.mode === 'limpia-neveras' && !formData.ingredientes) {
+            console.error('❌ Error: ingredientes vacío');
+        }
+        if (formData.mode === 'adaptador-inteligente' && !formData.recetaOriginal) {
+            console.error('❌ Error: recetaOriginal vacío');
+        }
+        
+        return formData;
     }
     
-    /**
-     * Valida los datos del formulario
-     */
     function validateFormData(data, mode) {
         switch (mode) {
             case 'receta-ingredientes':
@@ -159,7 +211,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 
             case 'limpia-neveras':
                 if (!data.ingredientes) {
-                    alert('Por favor, ingresa los ingredientes que tienes disponibles en la nevera');
+                    alert('Por favor, ingresa los ingredientes que tienes en la nevera');
                     return false;
                 }
                 break;
@@ -184,799 +236,1066 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         return true;
     }
-    
-    /**
-     * Llama al backend para generar receta
-     */
-    async function generarReceta(data, mode) {
-        const response = await fetch('/api/generate', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(data)
-        });
 
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const result = await response.json();
-        mostrarReceta(result.receta, mode);
+    function setLoading(isLoading) {
+        generateBtn.disabled = isLoading;
+        generateBtn.textContent = isLoading ? 'Generando...' : 'Generar';
     }
     
-    // === 3. LÓGICA PARA MOSTRAR PLAN SEMANAL CON BOTONES CLICABLES ===
-    
-    /**
-     * Muestra la receta generada según el modo
-     */
-    function mostrarReceta(recetaTexto, mode) {
-        const titulos = {
-            'receta-ingredientes': '🥗 Tu Receta por Ingredientes',
-            'limpia-neveras': '🗄️ Tu Receta Limpia-Neveras',
-            'adaptador-inteligente': '🔄 Tu Receta Adaptada',
-            'plan-semanal': '📅 Tu Plan Semanal Personalizado'
-        };
-        
-        const titulo = titulos[mode] || '🍳 Tu Receta Personalizada';
-        let html = '';
-        
-        // Manejo especial para Plan Semanal (JSON)
-        if (mode === 'plan-semanal') {
-            try {
-                // Limpiar respuesta JSON de posibles bloques Markdown
-                let jsonTexto = limpiarJSONDeMarkdown(recetaTexto);
-                const planData = JSON.parse(jsonTexto);
-                
-                html = `
-                    <div class="receta-resultado">
-                        <h3>${titulo}</h3>
-                        <div class="receta-contenido">
-                            ${renderizarPlanSemanal(planData)}
-                        </div>
-                    </div>
-                `;
-                
-                // Almacenar datos JSON para uso en otras funciones
-                window.planSemanalData = planData;
-                
-            } catch (error) {
-                console.error('Error al parsear JSON del plan semanal:', error);
-                html = `
-                    <div class="receta-resultado">
-                        <h3>${titulo}</h3>
-                        <div class="receta-contenido">
-                            <p>Error al procesar el plan semanal. Por favor, inténtalo de nuevo.</p>
-                        </div>
-                    </div>
-                `;
-            }
+    function renderResponse(data, mode, originalFormData) {
+        if (mode === 'plan-semanal' && data.planSemanal && data.listaCompra) {
+            // TEMPORALMENTE DESACTIVADO: Enriquecimiento progresivo para evitar rate limiting
+            // startProgressiveEnrichment(data, originalFormData);
+            renderFinalWeeklyPlan(data, originalFormData);
         } else {
-            // Manejo normal para otros modos
-            html = `
-                <div class="receta-resultado">
-                    <h3>${titulo}</h3>
-                    <div class="receta-contenido">
-                        ${formatearReceta(recetaTexto)}
-                    </div>
-                </div>
-            `;
-        }
-        
-        respuestaDiv.innerHTML = html;
-        respuestaDiv.classList.add('show');
-        
-        // Mostrar botones según el modo
-        mostrarBotonesAccion(mode, recetaTexto);
-        
-        // Añadir event listeners a los botones de receta (solo para plan semanal)
-        if (mode === 'plan-semanal') {
-            agregarEventListenersRecetas();
+            // Renderizar receta normal para otros modos
+            renderSingleRecipe(data, mode);
         }
     }
     
-    /**
-     * Renderiza el plan semanal desde JSON a HTML con botones clicables
-     */
-    function renderizarPlanSemanal(planData) {
-        if (!planData || !planData.planSemanal || !planData.listaCompra) {
-            return '<p>Error: Formato de datos del plan semanal inválido.</p>';
-        }
-        
-        let html = '<div class="plan-semanal-container">';
-        
-        // Renderizar días del plan
-        html += '<div class="plan-dias">';
-        planData.planSemanal.forEach(diaData => {
-            html += `
-                <div class="dia-container">
-                    <h4 class="dia-titulo">🗓️ ${diaData.dia}</h4>
-                    <div class="comidas-container">
-            `;
-            
-            diaData.comidas.forEach(comida => {
-                const emojiComida = {
-                    'Desayuno': '🥐',
-                    'Comida': '🍽️', 
-                    'Almuerzo': '🍽️',
-                    'Merienda': '🥨',
-                    'Cena': '🌙'
-                };
-                
-                html += `
-                    <div class="comida-item">
-                        <h5>${emojiComida[comida.tipo] || '🍽️'} ${comida.tipo}</h5>
-                        <div class="comida-details">
-                            <p><strong>📋 Receta:</strong> 
-                                <button class="receta-btn" 
-                                        data-receta="${comida.nombre}" 
-                                        data-personas="${planData.personas || 2}" 
-                                        data-dieta="${planData.dieta || 'ninguna'}">
-                                    ${comida.nombre}
-                                </button>
-                            </p>
-                            <p><strong>📊 Nutrición:</strong> ${comida.calorias} kcal | Proteínas: ${comida.proteinas}g | Grasas: ${comida.grasas}g | Carbohidratos: ${comida.carbohidratos}g</p>
-                            ${comida.vitaminas ? `<p><strong>💎 Destacados:</strong> ${comida.vitaminas}</p>` : ''}
-                        </div>
-                    </div>
-                `;
-            });
-            
-            html += `
-                        <div class="dia-total">
-                            <p><strong>📈 Total del día:</strong> ~${diaData.totalCalorias} kcal</p>
-                        </div>
-                    </div>
-                </div>
-            `;
-        });
-        html += '</div>';
-        
-        // Renderizar lista de compra
-        html += `
-            <div class="lista-compra-container">
-                <h4>🛒 Lista de la Compra Semanal</h4>
-                <div class="categorias-container">
-        `;
-        
-        planData.listaCompra.forEach(categoria => {
-            const emojiCategoria = {
-                'Lácteos y Huevos': '🥛',
-                'Verduras y Hortalizas': '🥬', 
-                'Carnes y Pescados': '🥩',
-                'Cereales y Legumbres': '🌾',
-                'Frutas': '🍎',
-                'Condimentos y Especias': '🧄',
-                'Frutos Secos y Semillas': '🥜',
-                'Aceites y Vinagres': '🫒',
-                'Otros Productos': '📦'
-            };
-            
-            html += `
-                <div class="categoria-compra">
-                    <h5>${emojiCategoria[categoria.categoria] || '📦'} ${categoria.categoria.toUpperCase()}</h5>
-                    <ul class="items-lista">
-            `;
-            
-            categoria.items.forEach(item => {
-                html += `<li>- ${item}</li>`;
-            });
-            
-            html += `
-                    </ul>
-                </div>
-            `;
-        });
-        
-        html += '</div></div></div>';
-        return html;
-    }
+    // === ENRIQUECIMIENTO PROGRESIVO ===
     
-    /**
-     * Añade event listeners a los botones de recetas del plan semanal
-     */
-    function agregarEventListenersRecetas() {
-        const botonesReceta = document.querySelectorAll('.receta-btn');
-        botonesReceta.forEach(boton => {
-            boton.addEventListener('click', async function() {
-                const nombreReceta = this.getAttribute('data-receta');
-                const personas = this.getAttribute('data-personas');
-                const dieta = this.getAttribute('data-dieta');
-                
-                await obtenerRecetaIndividual(nombreReceta, personas, dieta);
-            });
-        });
-    }
-    
-    /**
-     * Obtiene una receta individual del backend
-     */
-    async function obtenerRecetaIndividual(nombreReceta, personas, dieta) {
-        try {
-            mostrarCargandoReceta(nombreReceta);
-            
-            const response = await fetch('/api/get-recipe', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    nombreReceta: nombreReceta,
-                    personas: personas,
-                    dieta: dieta
-                })
-            });
-            
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            
-            const result = await response.json();
-            mostrarRecetaDetallada(nombreReceta, result.receta);
-            
-        } catch (error) {
-            console.error('Error obteniendo receta individual:', error);
-            mostrarErrorReceta(nombreReceta, 'Error al cargar la receta. Por favor, inténtalo de nuevo.');
-        }
-    }
-    
-    // === 4. LÓGICA DEL BOTÓN 'VER TODAS LAS RECETAS' ===
-    
-    /**
-     * Ve todas las recetas del plan semanal progresivamente
-     */
-    async function verTodasLasRecetas() {
-        if (!window.planSemanalData || !window.planSemanalData.planSemanal) {
-            alert('No hay un plan semanal válido para mostrar las recetas');
-            return;
-        }
+    async function startProgressiveEnrichment(initialData, originalFormData) {
+        console.log('🚀 Iniciando enriquecimiento progresivo...');
         
-        const textoOriginal = verTodasRecetasBtn.textContent;
-        verTodasRecetasBtn.textContent = '⏳ Cargando Recetas...';
-        verTodasRecetasBtn.disabled = true;
+        // Mostrar plan inicial con datos básicos y feedback de carga
+        renderInitialWeeklyPlan(initialData, originalFormData);
         
-        try {
-            // Crear contenedor para todas las recetas
-            let todasRecetasContainer = document.getElementById('todas-recetas');
-            if (!todasRecetasContainer) {
-                todasRecetasContainer = document.createElement('div');
-                todasRecetasContainer.id = 'todas-recetas';
-                todasRecetasContainer.className = 'todas-recetas-container';
-                respuestaDiv.appendChild(todasRecetasContainer);
-            }
-            
-            // Limpiar contenedor
-            todasRecetasContainer.innerHTML = `
-                <div class="todas-recetas-header">
-                    <h3>🍽️ Todas las Recetas del Plan Semanal</h3>
-                    <button class="cerrar-todas-recetas" onclick="cerrarTodasRecetas()">✖</button>
-                </div>
-                <div id="recetas-lista" class="recetas-lista"></div>
-            `;
-            
-            const recetasLista = document.getElementById('recetas-lista');
-            
-            // Recopilar todas las recetas únicas
-            const recetasUnicas = new Set();
-            const planData = window.planSemanalData;
-            
-            planData.planSemanal.forEach(diaData => {
-                diaData.comidas.forEach(comida => {
-                    recetasUnicas.add(comida.nombre);
+        // Extraer todas las recetas del plan
+        const allRecipes = [];
+        initialData.planSemanal.forEach(dia => {
+            dia.comidas.forEach(comida => {
+                allRecipes.push({
+                    nombre: comida.nombre,
+                    tipo: comida.tipo,
+                    dia: dia.dia,
+                    calorias: comida.calorias || 0,
+                    proteinas: comida.proteinas || 0,
+                    grasas: comida.grasas || 0,
+                    carbohidratos: comida.carbohidratos || 0
                 });
             });
-            
-            const recetasArray = Array.from(recetasUnicas);
-            let contador = 0;
-            
-            // Procesar recetas una por una
-            for (const nombreReceta of recetasArray) {
-                contador++;
+        });
+        
+        console.log(`📋 Total de recetas a enriquecer: ${allRecipes.length}`);
+        
+        // Inicializar sistema de acumulación de datos
+        window.enrichedRecipes = {};
+        window.totalRecipes = allRecipes.length;
+        window.completedRecipes = 0;
+        
+        // Actualizar feedback de progreso
+        updateProgressFeedback(0, allRecipes.length);
+        
+        // Iniciar peticiones en paralelo para obtener detalles
+        const promises = allRecipes.map(async (receta, index) => {
+            try {
+                await new Promise(resolve => setTimeout(resolve, index * 200)); // Stagger requests
+                const detalles = await fetchRecipeDetails(receta.nombre, originalFormData.personas, originalFormData.dieta);
                 
-                // Mostrar placeholder de carga
-                const recetaPlaceholder = document.createElement('div');
-                recetaPlaceholder.className = 'receta-item-loading';
-                recetaPlaceholder.innerHTML = `
-                    <div class="receta-item-header loading-header">
-                        <h4>🔄 ${nombreReceta}</h4>
-                        <span class="receta-contador">${contador}/${recetasArray.length}</span>
-                    </div>
-                    <div class="loading-content">Cargando receta...</div>
-                `;
+                // Acumular datos enriquecidos
+                window.enrichedRecipes[receta.nombre] = {
+                    ...receta,
+                    detallesCompletos: detalles
+                };
                 
-                recetasLista.appendChild(recetaPlaceholder);
-                recetaPlaceholder.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                window.completedRecipes++;
                 
-                try {
-                    // Obtener receta del backend
-                    const response = await fetch('/api/get-recipe', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            nombreReceta: nombreReceta,
-                            personas: planData.personas || 2,
-                            dieta: planData.dieta || 'ninguna'
-                        })
-                    });
-                    
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    
-                    const result = await response.json();
-                    
-                    // Reemplazar placeholder con contenido real
-                    recetaPlaceholder.className = 'receta-item-completa';
-                    recetaPlaceholder.innerHTML = `
-                        <div class="receta-item-header">
-                            <h4>✅ ${nombreReceta}</h4>
-                            <span class="receta-contador">${contador}/${recetasArray.length}</span>
-                        </div>
-                        <div class="receta-item-contenido">
-                            ${formatearReceta(result.receta)}
-                        </div>
-                    `;
-                    
-                } catch (error) {
-                    console.error(`Error cargando receta ${nombreReceta}:`, error);
-                    
-                    recetaPlaceholder.className = 'receta-item-error';
-                    recetaPlaceholder.innerHTML = `
-                        <div class="receta-item-header error-header">
-                            <h4>❌ ${nombreReceta}</h4>
-                            <span class="receta-contador">${contador}/${recetasArray.length}</span>
-                        </div>
-                        <div class="error-content">Error al cargar esta receta</div>
-                    `;
+                // Actualizar feedback de progreso
+                updateProgressFeedback(window.completedRecipes, window.totalRecipes);
+                
+                console.log(`✅ Enriquecida: ${receta.nombre} (${window.completedRecipes}/${window.totalRecipes})`);
+                
+                // Si todas las recetas están listas, renderizar plan completo
+                if (window.completedRecipes === window.totalRecipes) {
+                    await finalizeEnrichedPlan(initialData, originalFormData);
                 }
                 
-                // Pausa entre recetas
-                if (contador < recetasArray.length) {
-                    await new Promise(resolve => setTimeout(resolve, 500));
+            } catch (error) {
+                console.error(`❌ Error enriqueciendo ${receta.nombre}:`, error);
+                
+                // Marcar como completado aunque haya fallado para no bloquear el proceso
+                window.completedRecipes++;
+                updateProgressFeedback(window.completedRecipes, window.totalRecipes);
+                
+                // Si todas las recetas están procesadas (con o sin error), finalizar
+                if (window.completedRecipes === window.totalRecipes) {
+                    await finalizeEnrichedPlan(initialData, originalFormData);
                 }
             }
-            
-            // Restaurar botón
-            verTodasRecetasBtn.textContent = '✅ Recetas Cargadas';
-            verTodasRecetasBtn.classList.add('completed');
-            
-            setTimeout(() => {
-                verTodasRecetasBtn.textContent = textoOriginal;
-                verTodasRecetasBtn.classList.remove('completed');
-                verTodasRecetasBtn.disabled = false;
-            }, 3000);
-            
-        } catch (error) {
-            console.error('Error en verTodasLasRecetas:', error);
-            alert('Error al cargar las recetas. Por favor, inténtalo de nuevo.');
-            
-            verTodasRecetasBtn.textContent = textoOriginal;
-            verTodasRecetasBtn.disabled = false;
-        }
+        });
+        
+        // Timeout de seguridad (30 segundos máximo)
+        setTimeout(async () => {
+            if (window.completedRecipes < window.totalRecipes) {
+                console.warn('⚠️ Timeout alcanzado, finalizando con datos parciales...');
+                await finalizeEnrichedPlan(initialData, originalFormData);
+            }
+        }, 30000);
     }
     
-    // === 5. LÓGICA PARA 'DESCARGAR CALENDARIO EN PDF' ===
+    async function fetchRecipeDetails(nombreReceta, personas, dieta) {
+        const response = await fetch('/api/get-recipe-details', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                nombreReceta,
+                personas,
+                dieta
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        
+        const result = await response.json();
+        
+        // Parse JSON si viene como string
+        let detalleReceta = result.detalleReceta;
+        if (typeof detalleReceta === 'string') {
+            // Limpiar markdown si existe
+            if (detalleReceta.startsWith('```json')) {
+                detalleReceta = detalleReceta.substring(7, detalleReceta.length - 3).trim();
+            }
+            detalleReceta = JSON.parse(detalleReceta);
+        }
+        
+        return detalleReceta;
+    }
     
-    /**
-     * Exporta el calendario semanal a PDF usando html2pdf con tabla-rejilla
-     */
-    function exportarCalendarioPDF() {
-        try {
-            // Verificar datos del plan semanal
-            if (!window.planSemanalData || !window.planSemanalData.planSemanal) {
-                alert('No hay un plan semanal válido para exportar');
-                return;
-            }
-            
-            // Cambiar estado del botón
-            const textoOriginal = exportarCalendarioPdfBtn.textContent;
-            exportarCalendarioPdfBtn.textContent = '📅 Generando PDF...';
-            exportarCalendarioPdfBtn.disabled = true;
-            
-            const planData = window.planSemanalData;
-            const templateDiv = document.getElementById('pdf-calendario-template');
-            
-            if (!templateDiv) {
-                throw new Error('No se encontró el div de plantilla PDF');
-            }
-            
-            const fechaHoy = new Date().toLocaleDateString('es-ES');
-            
-            // Generar HTML de tabla-rejilla en la plantilla
-            templateDiv.innerHTML = `
-                <div style="
-                    font-family: 'Poppins', 'Lato', Arial, sans-serif;
-                    width: 100%;
-                    max-width: 1200px;
-                    margin: 0 auto;
-                    background: white;
-                    padding: 20px;
-                    box-sizing: border-box;
-                ">
-                    <!-- Encabezado -->
-                    <div style="
-                        background: linear-gradient(135deg, #2D6A4F 0%, #245c41 100%);
-                        color: white;
-                        text-align: center;
-                        padding: 30px;
-                        margin-bottom: 30px;
-                        border-radius: 10px;
-                    ">
-                        <h1 style="
-                            font-family: 'Poppins', Arial, sans-serif;
-                            font-size: 36px;
-                            font-weight: 700;
-                            margin: 0 0 10px 0;
-                            letter-spacing: 2px;
-                        ">CALENDARIO SEMANAL</h1>
-                        <p style="
-                            font-family: 'Lato', Arial, sans-serif;
-                            font-size: 18px;
-                            margin: 0;
-                            opacity: 0.9;
-                        ">Generado el ${fechaHoy}</p>
-                    </div>
-                    
-                    <!-- Tabla-Rejilla del Calendario -->
-                    <table style="
-                        width: 100%;
-                        border-collapse: collapse;
-                        margin-bottom: 30px;
-                        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-                        border-radius: 10px;
-                        overflow: hidden;
-                    ">
-                        <!-- Encabezados de días -->
-                        <thead>
-                            <tr>
-                                ${generarEncabezadosTabla()}
-                            </tr>
-                        </thead>
-                        <!-- Contenido de días -->
-                        <tbody>
-                            <tr>
-                                ${generarCeldasTabla(planData)}
-                            </tr>
-                        </tbody>
-                    </table>
-                    
-                    <!-- Información adicional -->
-                    <div style="
-                        text-align: center;
-                        font-family: 'Lato', Arial, sans-serif;
-                        font-size: 14px;
-                        color: #6C757D;
-                        margin-top: 20px;
-                    ">
-                        <p style="margin: 8px 0; font-weight: 600;">
-                            Plan para ${planData.personas || 2} persona${(planData.personas || 2) > 1 ? 's' : ''}
-                            ${planData.dieta && planData.dieta !== 'ninguna' ? ` • Dieta: ${planData.dieta.charAt(0).toUpperCase() + planData.dieta.slice(1)}` : ''}
-                        </p>
-                        <p style="margin: 8px 0; font-style: italic;">
-                            Generado por Asistente de Cocina IA
-                        </p>
+    function updateProgressFeedback(completed, total) {
+        const progressContainer = document.getElementById('enrichment-progress');
+        if (progressContainer) {
+            const percentage = Math.round((completed / total) * 100);
+            progressContainer.innerHTML = `
+                <div class="progress-info">
+                    <p>🔄 Enriqueciendo recetas... ${completed}/${total} completadas (${percentage}%)</p>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: ${percentage}%"></div>
                     </div>
                 </div>
             `;
             
-            // Configurar y ejecutar html2pdf
-            const opciones = {
-                margin: 10,
-                filename: 'calendario-semanal.pdf',
-                image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { 
-                    scale: 2,
-                    useCORS: true,
-                    letterRendering: true,
-                    allowTaint: true
-                },
-                jsPDF: { 
-                    unit: 'mm', 
-                    format: 'a4', 
-                    orientation: 'landscape' 
-                }
-            };
-            
-            // Generar y descargar PDF
-            html2pdf().set(opciones).from(templateDiv).save().then(() => {
-                console.log('PDF generado exitosamente');
-                
-                // Limpiar contenido
-                templateDiv.innerHTML = '';
-                
-                // Feedback visual de éxito
-                exportarCalendarioPdfBtn.textContent = '✅ Calendario Generado';
-                exportarCalendarioPdfBtn.classList.add('exported');
-                
-                setTimeout(() => {
-                    exportarCalendarioPdfBtn.textContent = textoOriginal;
-                    exportarCalendarioPdfBtn.classList.remove('exported');
-                    exportarCalendarioPdfBtn.disabled = false;
-                }, 2500);
-                
-            }).catch(error => {
-                console.error('Error en html2pdf:', error);
-                throw error;
-            });
-            
-        } catch (error) {
-            console.error('Error al exportar calendario PDF:', error);
-            alert('Error al generar el calendario. Por favor, inténtalo de nuevo.');
-            
-            exportarCalendarioPdfBtn.textContent = '📅 Descargar Calendario en PDF';
-            exportarCalendarioPdfBtn.disabled = false;
-        }
-    }
-    
-    /**
-     * Genera los encabezados de la tabla del calendario
-     */
-    function generarEncabezadosTabla() {
-        const diasSemana = ['LUNES', 'MARTES', 'MIÉRCOLES', 'JUEVES', 'VIERNES', 'SÁBADO', 'DOMINGO'];
-        
-        return diasSemana.map(dia => `
-            <th style="
-                background: linear-gradient(135deg, #FF8C42 0%, #E57125 100%);
-                color: white;
-                padding: 15px 10px;
-                font-family: 'Poppins', Arial, sans-serif;
-                font-weight: 600;
-                font-size: 14px;
-                text-align: center;
-                border: none;
-            ">${dia}</th>
-        `).join('');
-    }
-    
-    /**
-     * Genera las celdas de contenido para la tabla del calendario
-     */
-    function generarCeldasTabla(planData) {
-        const maxDays = Math.min(planData.planSemanal.length, 7);
-        let celdas = '';
-        
-        // Generar celdas para los días disponibles
-        for (let i = 0; i < maxDays; i++) {
-            const diaData = planData.planSemanal[i];
-            
-            celdas += `
-                <td style="
-                    background: #F8F9FA;
-                    padding: 15px 10px;
-                    vertical-align: top;
-                    min-height: 300px;
-                    border: 1px solid #DEE2E6;
-                    position: relative;
-                    width: 14.28%;
-                ">
-                    <!-- Nombre del día -->
-                    <div style="
-                        font-family: 'Poppins', Arial, sans-serif;
-                        font-weight: 600;
-                        color: #2D6A4F;
-                        font-size: 12px;
-                        text-align: center;
-                        margin-bottom: 12px;
-                        padding-bottom: 8px;
-                        border-bottom: 2px solid #FF8C42;
-                    ">
-                        ${diaData.dia.length > 10 ? diaData.dia.substring(0, 10) + '...' : diaData.dia}
+            if (completed === total) {
+                progressContainer.innerHTML = `
+                    <div class="progress-complete">
+                        <p>✅ ¡Todas las recetas enriquecidas! Generando vista final...</p>
                     </div>
-                    
-                    <!-- Comidas del día -->
-                    <div style="font-family: 'Lato', Arial, sans-serif; font-size: 10px;">
-                        ${generarComidasTabla(diaData.comidas)}
-                    </div>
-                    
-                    <!-- Total de calorías -->
-                    ${diaData.totalCalorias ? `
-                        <div style="
-                            position: absolute;
-                            bottom: 8px;
-                            left: 8px;
-                            right: 8px;
-                            background: linear-gradient(135deg, #2D6A4F 0%, #245c41 100%);
-                            color: white;
-                            text-align: center;
-                            padding: 6px 4px;
-                            border-radius: 4px;
-                            font-family: 'Poppins', Arial, sans-serif;
-                            font-weight: 600;
-                            font-size: 9px;
-                        ">
-                            Total: ${diaData.totalCalorias} kcal
-                        </div>
-                    ` : ''}
-                </td>
-            `;
+                `;
+            }
         }
-        
-        // Rellenar celdas vacías si hay menos de 7 días
-        for (let i = maxDays; i < 7; i++) {
-            celdas += `
-                <td style="
-                    background: #FFFFFF;
-                    border: 1px solid #DEE2E6;
-                    min-height: 300px;
-                    opacity: 0.3;
-                    width: 14.28%;
-                "></td>
-            `;
-        }
-        
-        return celdas;
     }
     
-    /**
-     * Genera el HTML para las comidas de un día en la tabla
-     */
-    function generarComidasTabla(comidas) {
-        const emojiComida = {
-            'Desayuno': '🥐',
-            'Comida': '🍽️',
-            'Almuerzo': '🍽️', 
-            'Merienda': '🥨',
-            'Cena': '🌙'
+    async function finalizeEnrichedPlan(initialData, originalFormData) {
+        console.log('🎉 Finalizando plan enriquecido...');
+        
+        // Construir datos finales combinando inicial + enriquecido
+        const enrichedPlanData = {
+            planSemanal: initialData.planSemanal.map(dia => ({
+                ...dia,
+                comidas: dia.comidas.map(comida => {
+                    const enrichedRecipe = window.enrichedRecipes[comida.nombre];
+                    if (enrichedRecipe && enrichedRecipe.detallesCompletos) {
+                        return {
+                            ...comida,
+                            recetaCompleta: enrichedRecipe.detallesCompletos,
+                            ingredientes: enrichedRecipe.detallesCompletos.ingredientes || [],
+                            instrucciones: enrichedRecipe.detallesCompletos.instrucciones || [],
+                            tiempoPreparacion: enrichedRecipe.detallesCompletos.tiempoPreparacion || 0,
+                            tiempoCoccion: enrichedRecipe.detallesCompletos.tiempoCoccion || 0,
+                            consejos: enrichedRecipe.detallesCompletos.consejos || [],
+                            variaciones: enrichedRecipe.detallesCompletos.variaciones || []
+                        };
+                    }
+                    return comida;
+                })
+            })),
+            listaCompra: initialData.listaCompra
         };
         
-        const maxComidas = Math.min(comidas.length, 4);
+        // Almacenar datos finales globalmente
+        window.lastResponseData = enrichedPlanData;
         
-        return comidas.slice(0, maxComidas).map(comida => `
-            <div style="
-                margin-bottom: 10px;
-                padding: 6px;
-                background: white;
-                border-radius: 4px;
-                border-left: 3px solid #FF8C42;
-                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            ">
-                <div style="
-                    font-weight: 600;
-                    color: #2D6A4F;
-                    font-size: 10px;
-                    margin-bottom: 3px;
-                ">
-                    ${emojiComida[comida.tipo] || '🍽️'} ${comida.tipo}
+        // Renderizar plan final completo
+        renderFinalWeeklyPlan(enrichedPlanData, originalFormData);
+    }
+    
+    function renderInitialWeeklyPlan(data, originalFormData) {
+        const html = `
+            <div class="weekly-plan-container">
+                <h3>📅 Tu Plan Semanal Personalizado</h3>
+                <div class="plan-info">
+                    <p><strong>Para:</strong> ${originalFormData.personas || 2} persona${(originalFormData.personas || 2) > 1 ? 's' : ''}</p>
+                    <p><strong>Dieta:</strong> ${originalFormData.dieta === 'ninguna' ? 'Sin restricciones' : originalFormData.dieta}</p>
+                    <p><strong>Objetivo calórico:</strong> ${originalFormData.caloriasObjetivo} kcal/día</p>
                 </div>
-                <div style="
-                    color: #212529;
-                    font-size: 9px;
-                    line-height: 1.3;
-                    margin-bottom: 3px;
-                ">
-                    ${comida.nombre.length > 25 ? comida.nombre.substring(0, 25) + '...' : comida.nombre}
+                
+                <div id="enrichment-progress" class="enrichment-progress">
+                    <div class="progress-info">
+                        <p>🚀 Preparando plan detallado...</p>
+                    </div>
                 </div>
-                <div style="
-                    color: #6C757D;
-                    font-size: 8px;
-                ">
-                    ${comida.calorias || 0} kcal
+                
+                <div class="days-grid">
+                    ${renderDaysGrid(data.planSemanal)}
                 </div>
+                
+                <div class="shopping-list">
+                    <h4>🛒 Lista de la Compra Semanal</h4>
+                    ${renderShoppingList(data.listaCompra)}
+                </div>
+                
+                <div class="action-buttons-loading">
+                    <p>⏳ Los botones de descarga se activarán cuando todas las recetas estén listas...</p>
+                </div>
+            </div>
+        `;
+        
+        responseDiv.innerHTML = html;
+    }
+    
+    function renderFinalWeeklyPlan(data, originalFormData) {
+        const html = `
+            <div class="weekly-plan-container">
+                <h3>📅 Tu Plan Semanal Personalizado</h3>
+                <div class="plan-info">
+                    <p><strong>Para:</strong> ${originalFormData.personas || 2} persona${(originalFormData.personas || 2) > 1 ? 's' : ''}</p>
+                    <p><strong>Dieta:</strong> ${originalFormData.dieta === 'ninguna' ? 'Sin restricciones' : originalFormData.dieta}</p>
+                    <p><strong>Objetivo calórico:</strong> ${originalFormData.caloriasObjetivo} kcal/día</p>
+                </div>
+                
+                <div class="completion-notice">
+                    <p>✨ <strong>¡Plan completo!</strong> Todas las recetas han sido enriquecidas con ingredientes, instrucciones y consejos detallados. Haz click en cualquier receta para ver sus detalles.</p>
+                </div>
+                
+                <div class="days-grid">
+                    ${renderDaysGrid(data.planSemanal, true)}
+                </div>
+                
+                <div class="shopping-list">
+                    <h4>🛒 Lista de la Compra Semanal</h4>
+                    ${renderShoppingList(data.listaCompra)}
+                </div>
+                
+                <div class="action-buttons">
+                    <button id="copy-shopping-btn" class="action-btn copy-btn">
+                        📋 Copiar Lista de Compra
+                    </button>
+                    <button id="view-all-recipes-btn" class="action-btn view-all-btn">
+                        🍽️ Ver Todas las Recetas
+                    </button>
+                    <button id="download-calendar-btn" class="action-btn calendar-btn">
+                        📅 Descargar Calendario PDF
+                    </button>
+                    <button id="download-recipes-btn" class="action-btn recipes-btn">
+                        📖 Descargar Recetario PDF
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        responseDiv.innerHTML = html;
+        
+        // Activar todos los botones funcionales
+        setupActionButtons(data);
+        
+        // Configurar interactividad de recetas
+        setupRecipeInteractions(data);
+    }
+
+    function renderWeeklyPlan(data, originalFormData) {
+        const html = `
+            <div class="weekly-plan-container">
+                <h3>📅 Tu Plan Semanal Personalizado</h3>
+                <div class="plan-info">
+                    <p><strong>Para:</strong> ${originalFormData.personas || 2} persona${(originalFormData.personas || 2) > 1 ? 's' : ''}</p>
+                    <p><strong>Dieta:</strong> ${originalFormData.dieta === 'ninguna' ? 'Sin restricciones' : originalFormData.dieta}</p>
+                    <p><strong>Objetivo calórico:</strong> ${originalFormData.caloriasObjetivo} kcal/día</p>
+                </div>
+                
+                <div class="days-grid">
+                    ${renderDaysGrid(data.planSemanal)}
+                </div>
+                
+                <div class="shopping-list">
+                    <h4>🛒 Lista de la Compra Semanal</h4>
+                    ${renderShoppingList(data.listaCompra)}
+                </div>
+                
+                <div class="action-buttons">
+                    <button id="copy-shopping-btn" class="action-btn copy-btn">
+                        📋 Copiar Lista de Compra
+                    </button>
+                    <button id="download-calendar-btn" class="action-btn calendar-btn">
+                        📅 Descargar Calendario PDF
+                    </button>
+                    <button id="download-recipes-btn" class="action-btn recipes-btn">
+                        📖 Descargar Recetario PDF
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        responseDiv.innerHTML = html;
+        
+        // Agregar event listeners a los botones
+        setupActionButtons(data);
+    }
+    
+    function renderDaysGrid(planSemanal, showEnrichedData = false) {
+        return planSemanal.map(dia => `
+            <div class="day-card">
+                <h5 class="day-title">🗓️ ${dia.dia}</h5>
+                <div class="meals">
+                    ${dia.comidas.map((comida, index) => `
+                        <div class="meal-item ${comida.recetaCompleta ? 'enriched' : ''}" 
+                             data-recipe-name="${comida.nombre}" 
+                             data-day="${dia.dia}"
+                             data-meal-index="${index}">
+                            <div class="meal-header">
+                                <span class="meal-type">${getMealEmoji(comida.tipo)} ${comida.tipo}</span>
+                                ${comida.recetaCompleta ? '<span class="enriched-badge">✨</span>' : ''}
+                            </div>
+                            <div class="meal-name clickable-recipe" title="Click para ver detalles completos">
+                                ${comida.nombre}
+                            </div>
+                            <div class="meal-nutrition">
+                                📊 ${comida.calorias || 0} kcal | 
+                                P: ${comida.proteinas || 0}g | 
+                                G: ${comida.grasas || 0}g | 
+                                C: ${comida.carbohidratos || 0}g
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+                ${dia.totalCalorias ? `
+                    <div class="day-total">
+                        <strong>📈 Total: ${dia.totalCalorias} kcal</strong>
+                    </div>
+                ` : ''}
             </div>
         `).join('');
     }
     
-    // === 6. LÓGICA PARA 'COPIAR LISTA DE LA COMPRA' ===
+    function renderShoppingList(listaCompra) {
+        return `
+            <div class="categories-grid">
+                ${listaCompra.map(categoria => `
+                    <div class="category-card">
+                        <h6 class="category-title">${getCategoryEmoji(categoria.categoria)} ${categoria.categoria}</h6>
+                        <ul class="items-list">
+                            ${categoria.items.map(item => `<li>• ${item}</li>`).join('')}
+                        </ul>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
     
-    /**
-     * Copia la lista de compra al portapapeles
-     */
-    async function copiarListaCompra() {
-        try {
-            let textoLista = '';
-            
-            // Detectar si es Plan Semanal (JSON) o receta normal
-            if (window.planSemanalData && window.planSemanalData.listaCompra) {
-                // Plan Semanal: generar texto desde JSON
-                textoLista = generarTextoListaCompra(window.planSemanalData.listaCompra);
-            } else {
-                // Otros modos: extraer desde HTML
-                const respuestaContent = respuestaDiv.innerHTML;
-                const listaMatch = respuestaContent.match(/### Lista de la Compra( Semanal)?[\s\S]*?(?=<h3>|$)/i);
-                
-                if (!listaMatch) {
-                    alert('No se encontró la lista de compra en la respuesta');
-                    return;
+    function renderSingleRecipe(data, mode) {
+        const titles = {
+            'receta-ingredientes': '🥗 Tu Receta por Ingredientes',
+            'limpia-neveras': '🗄️ Tu Receta Limpia-Neveras',
+            'adaptador-inteligente': '🔄 Tu Receta Adaptada'
+        };
+        
+        // Intentar parsear el resultado si viene como string JSON
+        let recipeData = data;
+        let recipeContent = data.receta || data.resultado;
+        
+        if (typeof recipeContent === 'string') {
+            try {
+                // Limpiar markdown si existe
+                if (recipeContent.startsWith('```json')) {
+                    recipeContent = recipeContent.substring(7, recipeContent.length - 3).trim();
+                }
+                if (recipeContent.startsWith('```')) {
+                    recipeContent = recipeContent.substring(3, recipeContent.length - 3).trim();
                 }
                 
-                const tempDiv = document.createElement('div');
-                tempDiv.innerHTML = listaMatch[0];
-                textoLista = tempDiv.textContent || tempDiv.innerText || '';
-                textoLista = formatearTextoLista(textoLista);
+                // Intentar parsear como JSON
+                const parsedData = JSON.parse(recipeContent);
+                recipeData = { ...data, ...parsedData };
+                recipeContent = parsedData;
+            } catch (e) {
+                // Si no es JSON, mantener como texto formateado
+                console.log('No es JSON, renderizando como texto:', e);
             }
-            
-            // Copiar al portapapeles
-            await navigator.clipboard.writeText(textoLista);
-            
-            // Feedback visual
-            const textoOriginal = copiarListaBtn.textContent;
-            copiarListaBtn.textContent = '✅ ¡Copiado!';
-            copiarListaBtn.classList.add('copied');
-            copiarListaBtn.disabled = true;
+        }
+        
+        const html = `
+            <div class="single-recipe-container">
+                <h3>${titles[mode] || '🍳 Tu Receta'}</h3>
+                
+                ${renderSingleRecipeContent(recipeContent, recipeData)}
+                
+                ${recipeData.listaCompra ? `
+                    <div class="shopping-list">
+                        <h4>🛒 Lista de la Compra</h4>
+                        ${renderShoppingList(recipeData.listaCompra)}
+                    </div>
+                    
+                    <div class="action-buttons">
+                        <button id="copy-shopping-btn" class="action-btn copy-btn">
+                            📋 Copiar Lista de Compra
+                        </button>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+        
+        responseDiv.innerHTML = html;
+        
+        // Solo configurar botón de copiar si hay lista de compra
+        if (recipeData.listaCompra) {
+            setupCopyButton(recipeData);
+        }
+    }
+    
+    function renderSingleRecipeContent(content, fullData) {
+        // Si el contenido es un objeto (JSON parseado correctamente)
+        if (typeof content === 'object' && content !== null) {
+            return `
+                <div class="recipe-structured-content">
+                    ${content.nombre ? `
+                        <div class="recipe-name-section">
+                            <h4>🍽️ ${content.nombre}</h4>
+                        </div>
+                    ` : ''}
+                    
+                    ${content.descripcion ? `
+                        <div class="recipe-description">
+                            <p>${content.descripcion}</p>
+                        </div>
+                    ` : ''}
+                    
+                    ${content.tiempoPreparacion || content.tiempoCoccion ? `
+                        <div class="recipe-time-info">
+                            ${content.tiempoPreparacion ? `<span>⏱️ Preparación: ${content.tiempoPreparacion} min</span>` : ''}
+                            ${content.tiempoCoccion ? `<span>🔥 Cocción: ${content.tiempoCoccion} min</span>` : ''}
+                            ${content.tiempoTotal ? `<span>📍 Total: ${content.tiempoTotal} min</span>` : ''}
+                        </div>
+                    ` : ''}
+                    
+                    ${content.porciones ? `
+                        <div class="recipe-servings">
+                            <p><strong>👥 Porciones:</strong> ${content.porciones}</p>
+                        </div>
+                    ` : ''}
+                    
+                    ${content.ingredientes && Array.isArray(content.ingredientes) ? `
+                        <div class="recipe-ingredients">
+                            <h4>🥘 Ingredientes</h4>
+                            <ul>
+                                ${content.ingredientes.map(ing => `
+                                    <li>${typeof ing === 'object' ? `${ing.cantidad || ''} ${ing.item || ing.nombre || ''}` : ing}</li>
+                                `).join('')}
+                            </ul>
+                        </div>
+                    ` : ''}
+                    
+                    ${content.instrucciones && Array.isArray(content.instrucciones) ? `
+                        <div class="recipe-instructions">
+                            <h4>🔥 Instrucciones</h4>
+                            <ol>
+                                ${content.instrucciones.map(paso => `<li>${paso}</li>`).join('')}
+                            </ol>
+                        </div>
+                    ` : ''}
+                    
+                    ${content.informacionNutricional || content.calorias ? `
+                        <div class="recipe-nutrition">
+                            <h4>📊 Información Nutricional (por porción)</h4>
+                            <div class="nutrition-grid">
+                                ${content.calorias ? `<div>Calorías: ${content.calorias} kcal</div>` : ''}
+                                ${content.proteinas ? `<div>Proteínas: ${content.proteinas}g</div>` : ''}
+                                ${content.grasas ? `<div>Grasas: ${content.grasas}g</div>` : ''}
+                                ${content.carbohidratos ? `<div>Carbohidratos: ${content.carbohidratos}g</div>` : ''}
+                                ${content.informacionNutricional?.fibra ? `<div>Fibra: ${content.informacionNutricional.fibra}g</div>` : ''}
+                                ${content.informacionNutricional?.vitaminas ? `<div>Vitaminas: ${content.informacionNutricional.vitaminas}</div>` : ''}
+                            </div>
+                        </div>
+                    ` : ''}
+                    
+                    ${content.consejos && Array.isArray(content.consejos) ? `
+                        <div class="recipe-tips">
+                            <h4>💡 Consejos del Chef</h4>
+                            <ul>
+                                ${content.consejos.map(consejo => `<li>${consejo}</li>`).join('')}
+                            </ul>
+                        </div>
+                    ` : ''}
+                    
+                    ${content.variaciones && Array.isArray(content.variaciones) ? `
+                        <div class="recipe-variations">
+                            <h4>🔄 Variaciones</h4>
+                            <ul>
+                                ${content.variaciones.map(variacion => `<li>${variacion}</li>`).join('')}
+                            </ul>
+                        </div>
+                    ` : ''}
+                    
+                    ${content.conservacion ? `
+                        <div class="recipe-storage">
+                            <h4>📦 Conservación</h4>
+                            <p>${content.conservacion}</p>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        } else {
+            // Si el contenido es texto (markdown o texto plano)
+            return `
+                <div class="recipe-text-content">
+                    ${formatRecipeText(content || 'Receta no disponible')}
+                </div>
+            `;
+        }
+    }
+    
+    function setupActionButtons(data) {
+        // Botón copiar lista de compra
+        const copyBtn = document.getElementById('copy-shopping-btn');
+        if (copyBtn) {
+            copyBtn.addEventListener('click', () => copyShoppingList(data.listaCompra));
+        }
+        
+        // Botón ver todas las recetas
+        const viewAllBtn = document.getElementById('view-all-recipes-btn');
+        if (viewAllBtn) {
+            viewAllBtn.addEventListener('click', () => showAllRecipesModal(data));
+        }
+        
+        // Botón descargar calendario PDF
+        const calendarBtn = document.getElementById('download-calendar-btn');
+        if (calendarBtn) {
+            calendarBtn.addEventListener('click', downloadCalendarPDF);
+        }
+        
+        // Botón descargar recetario PDF
+        const recipesBtn = document.getElementById('download-recipes-btn');
+        if (recipesBtn) {
+            recipesBtn.addEventListener('click', downloadRecipesPDF);
+        }
+    }
+    
+    function setupCopyButton(data) {
+        const copyBtn = document.getElementById('copy-shopping-btn');
+        if (copyBtn) {
+            copyBtn.addEventListener('click', () => copyShoppingList(data.listaCompra));
+        }
+    }
+    
+    function copyShoppingList(listaCompra) {
+        let texto = '🛒 Lista de la Compra\n\n';
+        
+        listaCompra.forEach(categoria => {
+            texto += `${getCategoryEmoji(categoria.categoria)} ${categoria.categoria.toUpperCase()}\n`;
+            categoria.items.forEach(item => {
+                texto += `• ${item}\n`;
+            });
+            texto += '\n';
+        });
+        
+        navigator.clipboard.writeText(texto).then(() => {
+            const btn = document.getElementById('copy-shopping-btn');
+            const originalText = btn.textContent;
+            btn.textContent = '✅ ¡Copiado!';
+            btn.style.backgroundColor = '#22c55e';
             
             setTimeout(() => {
-                copiarListaBtn.textContent = textoOriginal;
-                copiarListaBtn.classList.remove('copied');
-                copiarListaBtn.disabled = false;
+                btn.textContent = originalText;
+                btn.style.backgroundColor = '';
+            }, 2000);
+        }).catch(err => {
+            console.error('Error al copiar:', err);
+            alert('Error al copiar la lista. Inténtalo de nuevo.');
+        });
+    }
+    
+    async function downloadCalendarPDF() {
+        if (!window.lastFormData) {
+            alert('No hay datos de plan disponibles. Genera primero un plan semanal.');
+            return;
+        }
+        
+        console.log('📅 Datos que se enviarán para calendario PDF:', window.lastFormData);
+        
+        const btn = document.getElementById('download-calendar-btn');
+        const originalText = btn.textContent;
+        btn.textContent = '📅 Generando calendario...';
+        btn.disabled = true;
+        
+        try {
+            // Llamar al nuevo endpoint para generar calendario PDF
+            const response = await fetch('/api/generate-calendar-pdf', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(window.lastFormData),
+            });
+            
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
+                console.error('❌ Error del servidor:', errorData);
+                throw new Error(errorData.error || `HTTP ${response.status}`);
+            }
+            
+            const result = await response.json();
+            console.log('✅ Respuesta del servidor:', result);
+            let htmlCalendario = result.htmlCalendario;
+            
+            // Limpiar markdown si existe
+            if (htmlCalendario.startsWith('```html')) {
+                htmlCalendario = htmlCalendario.substring(7, htmlCalendario.length - 3).trim();
+            }
+            if (htmlCalendario.startsWith('```')) {
+                htmlCalendario = htmlCalendario.substring(3, htmlCalendario.length - 3).trim();
+            }
+            
+            if (!pdfTemplate) {
+                throw new Error("Plantilla PDF no encontrada");
+            }
+            
+            // Insertar HTML generado por la IA
+            console.log('📄 HTML limpio para PDF (primeros 200 chars):', htmlCalendario.substring(0, 200));
+            pdfTemplate.innerHTML = htmlCalendario;
+            pdfTemplate.style.display = 'block';
+            pdfTemplate.style.visibility = 'visible';
+            pdfTemplate.style.position = 'absolute';
+            pdfTemplate.style.top = '0';
+            pdfTemplate.style.left = '0';
+            pdfTemplate.style.width = '100%';
+            pdfTemplate.style.height = 'auto';
+            pdfTemplate.style.zIndex = '9999';
+            
+            // Configurar opciones para calendario (landscape) - más simples para mejor compatibilidad
+            const options = {
+                margin: 0.5,
+                filename: 'calendario-semanal.pdf',
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { 
+                    scale: 1,
+                    useCORS: true,
+                    allowTaint: true,
+                    backgroundColor: '#ffffff',
+                    logging: false,
+                    width: 1200,
+                    height: 800
+                },
+                jsPDF: { 
+                    unit: 'in',
+                    format: [11, 8.5],
+                    orientation: 'landscape' 
+                }
+            };
+            
+            // Crear blob con el HTML y descargar
+            const blob = new Blob([htmlCalendario], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            
+            // Crear enlace de descarga
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'calendario-semanal.html';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            // Limpiar template
+            pdfTemplate.innerHTML = '';
+            btn.textContent = '✅ Archivo HTML descargado';
+            btn.style.backgroundColor = '#22c55e';
+            
+            setTimeout(() => {
+                btn.textContent = originalText;
+                btn.style.backgroundColor = '';
+                btn.disabled = false;
             }, 2000);
             
         } catch (error) {
-            console.error('Error al copiar al portapapeles:', error);
-            alert('Error al copiar la lista. Por favor, inténtalo de nuevo.');
+            console.error('Error generando calendario PDF:', error);
+            btn.textContent = originalText;
+            btn.disabled = false;
+            
+            if (error.message.includes('429') || error.message.includes('Demasiadas')) {
+                alert('Demasiadas peticiones a la IA. Por favor espera 30 segundos e inténtalo de nuevo.');
+            } else {
+                alert('Error al generar el calendario PDF. Inténtalo de nuevo.');
+            }
         }
     }
     
-    /**
-     * Genera texto formateado de lista de compra desde datos JSON
-     */
-    function generarTextoListaCompra(listaCompra) {
-        let texto = '🛒 Lista de la Compra Semanal\r\n\r\n';
+    async function downloadRecipesPDF() {
+        if (!window.lastFormData) {
+            alert('No hay datos de plan disponibles. Genera primero un plan semanal.');
+            return;
+        }
         
-        listaCompra.forEach(categoria => {
-            const emojiCategoria = {
-                'Lácteos y Huevos': '🥛',
-                'Verduras y Hortalizas': '🥬', 
-                'Carnes y Pescados': '🥩',
-                'Cereales y Legumbres': '🌾',
-                'Frutas': '🍎',
-                'Condimentos y Especias': '🧄',
-                'Frutos Secos y Semillas': '🥜',
-                'Aceites y Vinagres': '🫒',
-                'Otros Productos': '📦'
+        const btn = document.getElementById('download-recipes-btn');
+        const originalText = btn.textContent;
+        btn.textContent = '📖 Generando recetario...';
+        btn.disabled = true;
+        
+        try {
+            // Llamar al nuevo endpoint para generar recetario PDF
+            const response = await fetch('/api/generate-recipes-pdf', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(window.lastFormData),
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            
+            const result = await response.json();
+            let htmlRecetario = result.htmlRecetario;
+            
+            // Limpiar markdown si existe
+            if (htmlRecetario.startsWith('```html')) {
+                htmlRecetario = htmlRecetario.substring(7, htmlRecetario.length - 3).trim();
+            }
+            if (htmlRecetario.startsWith('```')) {
+                htmlRecetario = htmlRecetario.substring(3, htmlRecetario.length - 3).trim();
+            }
+            
+            if (!pdfTemplate) {
+                throw new Error("Plantilla PDF no encontrada");
+            }
+            
+            // Insertar HTML generado por la IA
+            console.log('📖 HTML limpio para recetario (primeros 200 chars):', htmlRecetario.substring(0, 200));
+            pdfTemplate.innerHTML = htmlRecetario;
+            pdfTemplate.style.display = 'block';
+            pdfTemplate.style.visibility = 'visible';
+            pdfTemplate.style.position = 'absolute';
+            pdfTemplate.style.top = '0';
+            pdfTemplate.style.left = '0';
+            pdfTemplate.style.width = '100%';
+            pdfTemplate.style.height = 'auto';
+            pdfTemplate.style.zIndex = '9999';
+            
+            // Configurar opciones para recetario (portrait) - más simples para mejor compatibilidad
+            const options = {
+                margin: 0.5,
+                filename: 'recetario-semanal.pdf',
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { 
+                    scale: 1,
+                    useCORS: true,
+                    allowTaint: true,
+                    backgroundColor: '#ffffff',
+                    logging: false,
+                    width: 800,
+                    height: 1000
+                },
+                jsPDF: { 
+                    unit: 'in',
+                    format: [8.5, 11],
+                    orientation: 'portrait' 
+                },
+                pagebreak: { mode: ['avoid-all', 'css'] }
             };
             
-            texto += `${emojiCategoria[categoria.categoria] || '📦'} ${categoria.categoria.toUpperCase()}\r\n`;
-            categoria.items.forEach(item => {
-                texto += `- ${item}\r\n`;
+            // Crear blob con el HTML y descargar
+            const blob = new Blob([htmlRecetario], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            
+            // Crear enlace de descarga
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'recetario-semanal.html';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            // Limpiar template
+            pdfTemplate.innerHTML = '';
+            btn.textContent = '✅ Archivo HTML descargado';
+            btn.style.backgroundColor = '#22c55e';
+            
+            setTimeout(() => {
+                btn.textContent = originalText;
+                btn.style.backgroundColor = '';
+                btn.disabled = false;
+            }, 2000);
+            
+        } catch (error) {
+            console.error('Error generando recetario PDF:', error);
+            btn.textContent = originalText;
+            btn.disabled = false;
+            
+            if (error.message.includes('429') || error.message.includes('Demasiadas')) {
+                alert('Demasiadas peticiones a la IA. Por favor espera 30 segundos e inténtalo de nuevo.');
+            } else {
+                alert('Error al generar el recetario PDF. Inténtalo de nuevo.');
+            }
+        }
+    }
+    
+    function generateCalendarHTML(data) {
+        return `
+            <div style="font-family: 'Poppins', 'Lato', Arial, sans-serif; width: 100%; padding: 20px;">
+                <h1 style="text-align: center; color: #2D6A4F; margin-bottom: 30px;">📅 CALENDARIO SEMANAL</h1>
+                <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px;">
+                    ${data.planSemanal.map(dia => `
+                        <div style="border: 2px solid #DEE2E6; border-radius: 8px; padding: 10px; background: #F8F9FA;">
+                            <h4 style="color: #2D6A4F; margin: 0 0 10px 0; font-size: 14px; text-align: center;">${dia.dia}</h4>
+                            ${dia.comidas.map(comida => `
+                                <div style="background: white; margin-bottom: 8px; padding: 6px; border-radius: 4px; font-size: 10px;">
+                                    <div style="font-weight: bold; color: #FF8C42;">${getMealEmoji(comida.tipo)} ${comida.tipo}</div>
+                                    <div style="color: #212529; margin: 2px 0;">${comida.nombre}</div>
+                                    <div style="color: #6C757D; font-size: 9px;">${comida.calorias || 0} kcal</div>
+                                </div>
+                            `).join('')}
+                            ${dia.totalCalorias ? `<div style="text-align: center; font-weight: bold; color: #2D6A4F; font-size: 11px; margin-top: 8px;">Total: ${dia.totalCalorias} kcal</div>` : ''}
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    }
+    
+    function generateRecipesHTML(data) {
+        return `
+            <div style="font-family: 'Poppins', 'Lato', Arial, sans-serif; width: 100%; padding: 20px;">
+                <h1 style="text-align: center; color: #FF8C42; margin-bottom: 40px;">📖 RECETARIO SEMANAL</h1>
+                ${data.planSemanal ? data.planSemanal.map((dia, diaIndex) => 
+                    dia.comidas.map((comida, comidaIndex) => `
+                        <div style="page-break-before: ${diaIndex === 0 && comidaIndex === 0 ? 'avoid' : 'always'}; padding: 20px 0;">
+                            <h2 style="color: #2D6A4F; border-bottom: 2px solid #FF8C42; padding-bottom: 10px;">
+                                🍽️ ${comida.nombre}
+                            </h2>
+                            <div style="margin: 20px 0; line-height: 1.6;">
+                                <p><strong>Tipo de comida:</strong> ${getMealEmoji(comida.tipo)} ${comida.tipo}</p>
+                                <p><strong>Información nutricional:</strong> ${comida.calorias || 0} kcal | 
+                                Proteínas: ${comida.proteinas || 0}g | Grasas: ${comida.grasas || 0}g | 
+                                Carbohidratos: ${comida.carbohidratos || 0}g</p>
+                                ${comida.recetaCompleta || comida.instrucciones || comida.descripcion || 'Receta detallada disponible próximamente.'}
+                            </div>
+                        </div>
+                    `).join('')
+                ).join('') : '<p>No hay recetas disponibles para generar el recetario.</p>'}
+            </div>
+        `;
+    }
+    
+    // === FUNCIONES DE INTERACTIVIDAD ===
+    
+    function setupRecipeInteractions(data) {
+        // Hacer las recetas clickeables
+        document.querySelectorAll('.clickable-recipe').forEach(recipeElement => {
+            recipeElement.addEventListener('click', function() {
+                const recipeName = this.closest('.meal-item').dataset.recipeName;
+                showRecipeDetailModal(recipeName, data);
             });
-            texto += '\r\n';
+        });
+    }
+    
+    function showRecipeDetailModal(recipeName, planData) {
+        // Encontrar la receta en los datos
+        let selectedRecipe = null;
+        planData.planSemanal.forEach(dia => {
+            dia.comidas.forEach(comida => {
+                if (comida.nombre === recipeName && comida.recetaCompleta) {
+                    selectedRecipe = comida;
+                }
+            });
         });
         
-        return texto.trim();
-    }
-    
-    // === 7. FUNCIONES DE UTILIDAD ===
-    
-    /**
-     * Exporta solo el recetario completo a PDF
-     */
-    async function exportarRecetarioPDF() {
-        // Implementación placeholder - se puede expandir según necesidades
-        alert('Función de recetario PDF en desarrollo');
-    }
-    
-    /**
-     * Limpia el texto JSON de posibles bloques Markdown
-     */
-    function limpiarJSONDeMarkdown(texto) {
-        let textoLimpio = texto.trim();
-        
-        if (textoLimpio.startsWith('```json') || textoLimpio.startsWith('```JSON')) {
-            const lineas = textoLimpio.split('\n');
-            
-            if (lineas[0].startsWith('```json') || lineas[0].startsWith('```JSON')) {
-                lineas.shift();
-            }
-            
-            if (lineas[lineas.length - 1].trim() === '```') {
-                lineas.pop();
-            }
-            
-            textoLimpio = lineas.join('\n').trim();
-        } else if (textoLimpio.startsWith('```') && textoLimpio.endsWith('```')) {
-            textoLimpio = textoLimpio.slice(3, -3).trim();
+        if (!selectedRecipe || !selectedRecipe.recetaCompleta) {
+            alert('Los detalles de esta receta no están disponibles.');
+            return;
         }
         
-        return textoLimpio;
+        const modal = createModal(`
+            <div class="recipe-detail-content">
+                <h3>🍽️ ${selectedRecipe.nombre}</h3>
+                <div class="recipe-meta">
+                    <p><strong>Tipo:</strong> ${selectedRecipe.tipo} | <strong>Calorías:</strong> ${selectedRecipe.calorias || 0} kcal</p>
+                    <p><strong>Tiempo:</strong> ${selectedRecipe.tiempoPreparacion || 0}min prep + ${selectedRecipe.tiempoCoccion || 0}min cocción</p>
+                    <p><strong>Dificultad:</strong> ${selectedRecipe.recetaCompleta.dificultad || 'Media'}</p>
+                </div>
+                
+                <div class="recipe-nutrition">
+                    <h4>📊 Información Nutricional</h4>
+                    <div class="nutrition-grid">
+                        <div>Proteínas: ${selectedRecipe.proteinas || 0}g</div>
+                        <div>Grasas: ${selectedRecipe.grasas || 0}g</div>
+                        <div>Carbohidratos: ${selectedRecipe.carbohidratos || 0}g</div>
+                        <div>Fibra: ${selectedRecipe.recetaCompleta.informacionNutricional?.fibra || 0}g</div>
+                    </div>
+                </div>
+                
+                <div class="recipe-ingredients">
+                    <h4>🥘 Ingredientes</h4>
+                    <ul>
+                        ${(selectedRecipe.ingredientes || []).map(ing => `
+                            <li>${ing.cantidad || ''} ${ing.item || ing}</li>
+                        `).join('')}
+                    </ul>
+                </div>
+                
+                <div class="recipe-instructions">
+                    <h4>🔥 Instrucciones</h4>
+                    <ol>
+                        ${(selectedRecipe.instrucciones || []).map(paso => `
+                            <li>${paso}</li>
+                        `).join('')}
+                    </ol>
+                </div>
+                
+                ${selectedRecipe.consejos && selectedRecipe.consejos.length > 0 ? `
+                    <div class="recipe-tips">
+                        <h4>💡 Consejos del Chef</h4>
+                        <ul>
+                            ${selectedRecipe.consejos.map(consejo => `<li>${consejo}</li>`).join('')}
+                        </ul>
+                    </div>
+                ` : ''}
+            </div>
+        `);
+        
+        document.body.appendChild(modal);
     }
     
-    /**
-     * Formatea el texto de la receta para mostrar correctamente
-     */
-    function formatearReceta(texto) {
-        return texto
+    function showAllRecipesModal(planData) {
+        const allRecipes = [];
+        planData.planSemanal.forEach(dia => {
+            dia.comidas.forEach(comida => {
+                if (comida.recetaCompleta) {
+                    allRecipes.push({
+                        ...comida,
+                        dia: dia.dia
+                    });
+                }
+            });
+        });
+        
+        const modal = createModal(`
+            <div class="all-recipes-content">
+                <h3>🍽️ Todas las Recetas del Plan Semanal</h3>
+                <p class="recipes-count">Total: ${allRecipes.length} recetas completas</p>
+                
+                <div class="recipes-grid">
+                    ${allRecipes.map(receta => `
+                        <div class="recipe-card">
+                            <h4>${getMealEmoji(receta.tipo)} ${receta.nombre}</h4>
+                            <div class="recipe-card-meta">
+                                <span class="recipe-day">📅 ${receta.dia}</span>
+                                <span class="recipe-calories">📊 ${receta.calorias || 0} kcal</span>
+                            </div>
+                            <div class="recipe-card-time">
+                                ⏱️ ${(receta.tiempoPreparacion || 0) + (receta.tiempoCoccion || 0)} min total
+                            </div>
+                            <div class="recipe-card-preview">
+                                🥘 ${(receta.ingredientes || []).slice(0, 4).map(ing => ing.item || ing).join(', ')}
+                                ${(receta.ingredientes || []).length > 4 ? '...' : ''}
+                            </div>
+                            <button class="view-recipe-btn" data-recipe-name="${receta.nombre}">
+                                Ver Receta Completa
+                            </button>
+                        </div>
+                    `).join('')}
+                </div>
+                
+                <div class="modal-actions">
+                    <button id="download-all-recipes" class="action-btn recipes-btn">
+                        📖 Descargar Todas en PDF
+                    </button>
+                </div>
+            </div>
+        `);
+        
+        // Event listeners para botones dentro del modal
+        modal.querySelectorAll('.view-recipe-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const recipeName = this.dataset.recipeName;
+                // Cerrar modal actual y mostrar detalle
+                document.body.removeChild(modal);
+                showRecipeDetailModal(recipeName, planData);
+            });
+        });
+        
+        const downloadAllBtn = modal.querySelector('#download-all-recipes');
+        if (downloadAllBtn) {
+            downloadAllBtn.addEventListener('click', () => {
+                // Cerrar modal y descargar PDF
+                document.body.removeChild(modal);
+                downloadRecipesPDF();
+            });
+        }
+        
+        document.body.appendChild(modal);
+    }
+    
+    function createModal(content) {
+        const modal = document.createElement('div');
+        modal.className = 'recipe-modal';
+        modal.innerHTML = `
+            <div class="modal-overlay"></div>
+            <div class="modal-content">
+                <button class="modal-close">&times;</button>
+                ${content}
+            </div>
+        `;
+        
+        // Cerrar modal al hacer click en X o en overlay
+        modal.querySelector('.modal-close').addEventListener('click', () => {
+            document.body.removeChild(modal);
+        });
+        
+        modal.querySelector('.modal-overlay').addEventListener('click', () => {
+            document.body.removeChild(modal);
+        });
+        
+        // Cerrar con ESC
+        document.addEventListener('keydown', function escHandler(e) {
+            if (e.key === 'Escape') {
+                if (document.body.contains(modal)) {
+                    document.body.removeChild(modal);
+                }
+                document.removeEventListener('keydown', escHandler);
+            }
+        });
+        
+        return modal;
+    }
+    
+    // Funciones auxiliares
+    function getMealEmoji(tipo) {
+        const emojis = {
+            'Desayuno': '🥐',
+            'Comida': '🍽️',
+            'Almuerzo': '🍽️',
+            'Merienda': '🥨',
+            'Cena': '🌙'
+        };
+        return emojis[tipo] || '🍽️';
+    }
+    
+    function getCategoryEmoji(categoria) {
+        const emojis = {
+            'Lácteos y Huevos': '🥛',
+            'Verduras y Hortalizas': '🥬',
+            'Carnes y Pescados': '🥩',
+            'Cereales y Legumbres': '🌾',
+            'Frutas': '🍎',
+            'Condimentos y Especias': '🧄',
+            'Frutos Secos y Semillas': '🥜',
+            'Aceites y Vinagres': '🫒',
+            'Otros Productos': '📦'
+        };
+        return emojis[categoria] || '📦';
+    }
+    
+    function formatRecipeText(text) {
+        return text
             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
             .replace(/\n\n/g, '</p><p>')
             .replace(/\n/g, '<br>')
@@ -984,215 +1303,13 @@ document.addEventListener('DOMContentLoaded', function() {
             .replace(/$/, '</p>');
     }
     
-    /**
-     * Formatea texto de lista extraído de HTML
-     */
-    function formatearTextoLista(texto) {
-        return texto
-            .replace(/\*\*/g, '*')
-            .replace(/[ \t]+/g, ' ')
-            .replace(/\*([^*\n]+)\*/g, '\n*$1*\n')
-            .replace(/([🥬🥩🥛🌾🍎🧄🥜🫒📦])/g, '\n$1')
-            .replace(/(### Lista de la Compra( Semanal)?)/g, '$1\n')
-            .replace(/([^\n])\s*[-•]\s*/g, '$1\n- ')
-            .replace(/([^\n])\s*\*\s*([^*])/g, '$1\n* $2')
-            .replace(/\n\s*\n\s*\n+/g, '\n\n')
-            .replace(/^\s+/gm, '')
-            .replace(/\s+$/gm, '')
-            .replace(/(\*[^*\n]+\*)\s*\n([^\n*])/g, '$1\n\n$2')
-            .trim()
-            .replace(/\r\n/g, '\n')
-            .replace(/\r/g, '\n')
-            .replace(/\n/g, '\r\n');
-    }
-    
-    /**
-     * Muestra estado de carga
-     */
-    function mostrarCargando(mode) {
-        const loadingMessages = {
-            'receta-ingredientes': 'Creando receta perfecta con tus ingredientes...',
-            'limpia-neveras': 'Analizando tu nevera y creando la mejor receta...',
-            'adaptador-inteligente': 'Adaptando receta según tus preferencias...',
-            'plan-semanal': 'Generando tu plan semanal personalizado de 7 días...'
-        };
+    function generateTestPDF(data) {
+        if (!pdfTemplate) return console.error("Plantilla PDF no encontrada");
+
+        // Dibujar HTML en la plantilla
+        pdfTemplate.innerHTML = `<h1>Prueba PDF</h1><p>Datos recibidos: ${Object.keys(data).length} claves.</p>`;
         
-        const loadingText = loadingMessages[mode] || 'Generando receta...';
-        respuestaDiv.innerHTML = `<div class="loading">${loadingText}</div>`;
-        respuestaDiv.classList.add('show');
-        
-        const button = getButtonByMode(mode);
-        if (button) {
-            button.disabled = true;
-            button.textContent = 'Generando...';
-        }
+        // Usar html2pdf
+        html2pdf().from(pdfTemplate).save('test.pdf');
     }
-    
-    /**
-     * Oculta el estado de carga
-     */
-    function ocultarCargando(mode) {
-        const button = getButtonByMode(mode);
-        const originalTexts = {
-            'receta-ingredientes': 'Crear Receta',
-            'limpia-neveras': 'Limpiar Nevera',
-            'adaptador-inteligente': 'Adaptar Receta',
-            'plan-semanal': 'Generar Plan Semanal'
-        };
-        
-        if (button) {
-            button.disabled = false;
-            button.textContent = originalTexts[mode] || 'Generar';
-        }
-    }
-    
-    /**
-     * Obtiene el botón correspondiente al modo
-     */
-    function getButtonByMode(mode) {
-        const buttons = {
-            'receta-ingredientes': generarIngredientesBtn,
-            'limpia-neveras': generarLimpiaBtn,
-            'adaptador-inteligente': generarAdaptadorBtn,
-            'plan-semanal': generarPlanBtn
-        };
-        return buttons[mode] || null;
-    }
-    
-    /**
-     * Muestra un mensaje de error
-     */
-    function mostrarError(mensaje) {
-        respuestaDiv.innerHTML = `
-            <div class="error">
-                <h3>❌ Error</h3>
-                <p>${mensaje}</p>
-            </div>
-        `;
-    }
-    
-    /**
-     * Muestra los botones de acción según el modo
-     */
-    function mostrarBotonesAccion(mode, recetaTexto) {
-        if (mode === 'plan-semanal' && window.planSemanalData && window.planSemanalData.listaCompra) {
-            // Plan Semanal: mostrar todos los botones
-            copiarListaBtn.style.display = 'block';
-            exportarCalendarioPdfBtn.style.display = 'block';
-            verTodasRecetasBtn.style.display = 'block';
-            exportarRecetarioPdfBtn.style.display = 'block';
-        } else if ((mode === 'receta-ingredientes' && recetaTexto.includes('### Lista de la Compra'))) {
-            // Receta por Ingredientes: solo botón copiar
-            copiarListaBtn.style.display = 'block';
-            exportarCalendarioPdfBtn.style.display = 'none';
-            verTodasRecetasBtn.style.display = 'none';
-            exportarRecetarioPdfBtn.style.display = 'none';
-        } else {
-            ocultarBotonesAccion();
-        }
-    }
-    
-    /**
-     * Oculta todos los botones de acción
-     */
-    function ocultarBotonesAccion() {
-        copiarListaBtn.style.display = 'none';
-        exportarCalendarioPdfBtn.style.display = 'none';
-        verTodasRecetasBtn.style.display = 'none';
-        exportarRecetarioPdfBtn.style.display = 'none';
-    }
-    
-    /**
-     * Muestra estado de carga para una receta específica
-     */
-    function mostrarCargandoReceta(nombreReceta) {
-        let detalleContainer = document.getElementById('receta-detalle');
-        if (!detalleContainer) {
-            detalleContainer = document.createElement('div');
-            detalleContainer.id = 'receta-detalle';
-            detalleContainer.className = 'receta-detalle-container';
-            respuestaDiv.appendChild(detalleContainer);
-        }
-        
-        detalleContainer.innerHTML = `
-            <div class="receta-detallada">
-                <div class="receta-detalle-header">
-                    <h4>🍽️ ${nombreReceta}</h4>
-                    <button class="cerrar-receta" onclick="cerrarRecetaDetalle()">✖</button>
-                </div>
-                <div class="loading">Cargando receta completa...</div>
-            </div>
-        `;
-        
-        detalleContainer.scrollIntoView({ behavior: 'smooth' });
-    }
-    
-    /**
-     * Muestra la receta detallada
-     */
-    function mostrarRecetaDetallada(nombreReceta, recetaTexto) {
-        const detalleContainer = document.getElementById('receta-detalle');
-        if (!detalleContainer) return;
-        
-        detalleContainer.innerHTML = `
-            <div class="receta-detallada">
-                <div class="receta-detalle-header">
-                    <h4>🍽️ ${nombreReceta}</h4>
-                    <button class="cerrar-receta" onclick="cerrarRecetaDetalle()">✖</button>
-                </div>
-                <div class="receta-detalle-contenido">
-                    ${formatearReceta(recetaTexto)}
-                </div>
-            </div>
-        `;
-    }
-    
-    /**
-     * Muestra error al cargar una receta
-     */
-    function mostrarErrorReceta(nombreReceta, mensaje) {
-        const detalleContainer = document.getElementById('receta-detalle');
-        if (!detalleContainer) return;
-        
-        detalleContainer.innerHTML = `
-            <div class="receta-detallada">
-                <div class="receta-detalle-header">
-                    <h4>❌ Error - ${nombreReceta}</h4>
-                    <button class="cerrar-receta" onclick="cerrarRecetaDetalle()">✖</button>
-                </div>
-                <div class="error-contenido">
-                    <p>${mensaje}</p>
-                </div>
-            </div>
-        `;
-    }
-    
-    // === FUNCIONES GLOBALES PARA BOTONES DE CERRAR ===
-    
-    /**
-     * Cierra el detalle de receta
-     */
-    window.cerrarRecetaDetalle = function() {
-        const detalleContainer = document.getElementById('receta-detalle');
-        if (detalleContainer) {
-            detalleContainer.remove();
-        }
-    }
-    
-    /**
-     * Cierra el contenedor de todas las recetas
-     */
-    window.cerrarTodasRecetas = function() {
-        const todasRecetasContainer = document.getElementById('todas-recetas');
-        if (todasRecetasContainer) {
-            todasRecetasContainer.remove();
-        }
-        
-        if (verTodasRecetasBtn.classList.contains('completed')) {
-            verTodasRecetasBtn.textContent = '🍽️ Ver Todas las Recetas';
-            verTodasRecetasBtn.classList.remove('completed');
-            verTodasRecetasBtn.disabled = false;
-        }
-    }
-    
 });
