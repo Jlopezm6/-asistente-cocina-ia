@@ -57,8 +57,11 @@ app.post('/api/generate', async (req, res) => {
         console.log('📝 Prompt generado, longitud:', prompt.length);
         
         const resultado = await llamarGeminiAPI(prompt, apiKey);
+        
+        // Procesar respuesta para asegurar JSON válido
+        const resultadoProcesado = procesarRespuestaJSON(resultado);
 
-        res.json({ resultado });
+        res.json({ resultado: resultadoProcesado });
     } catch (error) {
         console.error('Error generando resultado:', error);
         console.error('Error details:', error.message);
@@ -215,62 +218,57 @@ INSTRUCCIONES ESPECÍFICAS:
 - ${dieta !== 'ninguna' ? `La receta DEBE ser completamente compatible con una dieta ${dieta}` : 'No hay restricciones dietéticas específicas'}
 - Sugiere una receta equilibrada y nutritiva
 
-FORMATO DE RESPUESTA REQUERIDO:
-**🥗 [NOMBRE ATRACTIVO DE LA RECETA]**
+⚠️ IMPORTANTE: DEBES RESPONDER ÚNICAMENTE EN FORMATO JSON ⚠️
 
-**👥 Porciones:** ${personas} ${personas === '1' ? 'persona' : 'personas'}
+NO uses Markdown, NO uses texto explicativo, NO uses formato de receta tradicional.
+RESPONDE SOLAMENTE con el objeto JSON que se muestra a continuación:
 
-**📋 Ingredientes:**
-[Lista detallada con cantidades exactas ajustadas para ${personas} ${personas === '1' ? 'persona' : 'personas'}]
+{
+  "nombre": "Nombre atractivo de la receta",
+  "descripcion": "Breve descripción de 1-2 líneas",
+  "porciones": ${personas},
+  "tiempoPreparacion": "X minutos",
+  "tiempoCoccion": "X minutos", 
+  "tiempoTotal": "X minutos",
+  "ingredientes": [
+    "Ingrediente 1 con cantidad exacta",
+    "Ingrediente 2 con cantidad exacta"
+  ],
+  "instrucciones": [
+    "Paso 1 detallado",
+    "Paso 2 detallado"
+  ],
+  "informacionNutricional": {
+    "calorias": "X kcal",
+    "proteinas": "X g",
+    "grasas": "X g",
+    "carbohidratos": "X g",
+    "fibra": "X g",
+    "vitaminas": "Vitaminas y minerales destacados"
+  },
+  "consejosChef": [
+    "Consejo 1 del chef",
+    "Consejo 2 del chef"
+  ],
+  "listaCompra": {
+    "verduras": ["Verdura 1 cantidad", "Verdura 2 cantidad"],
+    "carnes": ["Carne 1 cantidad", "Carne 2 cantidad"],
+    "lacteos": ["Lácteo 1 cantidad", "Lácteo 2 cantidad"],
+    "cereales": ["Cereal 1 cantidad", "Cereal 2 cantidad"],
+    "frutas": ["Fruta 1 cantidad", "Fruta 2 cantidad"],
+    "condimentos": ["Condimento 1 cantidad", "Condimento 2 cantidad"],
+    "frutosSecos": ["Fruto seco 1 cantidad"],
+    "aceites": ["Aceite/Vinagre 1 cantidad"],
+    "otros": ["Otro producto 1 cantidad"]
+  }
+}
 
-**⏱️ Tiempo de preparación:** [X minutos]
-**⏱️ Tiempo de cocción:** [X minutos]
-**⏱️ Tiempo total:** [X minutos]
-
-**🔥 Instrucciones:**
-[Pasos numerados claros y detallados]
-
-**📊 INFORMACIÓN NUTRICIONAL (por porción):**
-- **Calorías aproximadas:** [X kcal]
-- **Proteínas:** [X g]
-- **Grasas:** [X g] 
-- **Carbohidratos:** [X g]
-- **Fibra:** [X g]
-- **Vitaminas y Minerales Destacados:** [Ejemplo: Vitamina C: 45% VD, Hierro: 15% VD, Calcio: 20% VD]
-
-**💡 Consejos del Chef:**
-[1-2 consejos para resaltar los ingredientes principales]
-
-### Lista de la Compra
-
-**🥬 VERDURAS Y HORTALIZAS:**
-[Lista organizada con cantidades exactas para ${personas} ${personas === '1' ? 'persona' : 'personas'}]
-
-**🥩 CARNES Y PESCADOS:**
-[Lista organizada con cantidades exactas para ${personas} ${personas === '1' ? 'persona' : 'personas'}]
-
-**🥛 LÁCTEOS Y HUEVOS:**
-[Lista organizada con cantidades exactas para ${personas} ${personas === '1' ? 'persona' : 'personas'}]
-
-**🌾 CEREALES Y LEGUMBRES:**
-[Lista organizada con cantidades exactas para ${personas} ${personas === '1' ? 'persona' : 'personas'}]
-
-**🍎 FRUTAS:**
-[Lista organizada con cantidades exactas para ${personas} ${personas === '1' ? 'persona' : 'personas'}]
-
-**🧄 CONDIMENTOS Y ESPECIAS:**
-[Lista organizada con cantidades exactas para ${personas} ${personas === '1' ? 'persona' : 'personas'}]
-
-**🥜 FRUTOS SECOS Y SEMILLAS:**
-[Lista organizada con cantidades exactas para ${personas} ${personas === '1' ? 'persona' : 'personas'}]
-
-**🫒 ACEITES Y VINAGRES:**
-[Lista organizada con cantidades exactas para ${personas} ${personas === '1' ? 'persona' : 'personas'}]
-
-**📦 OTROS PRODUCTOS:**
-[Cualquier otro ingrediente necesario no clasificado en las categorías anteriores]
-
-IMPORTANTE: La información nutricional es OBLIGATORIA y debe ser un cálculo aproximado realista basado en los ingredientes utilizados.`;
+REQUISITOS CRÍTICOS:
+1. JSON válido sin texto antes o después
+2. Información nutricional realista por porción
+3. Ingredientes con cantidades específicas para ${personas} ${personas === '1' ? 'persona' : 'personas'}
+4. Instrucciones paso a paso claras
+5. Lista de compra organizada por categorías`;
 
     return prompt;
 }
@@ -290,33 +288,57 @@ INSTRUCCIONES ESPECÍFICAS:
 - Ajusta todas las cantidades exactamente para ${personas} ${personas === '1' ? 'persona' : 'personas'}
 - ${dieta !== 'ninguna' ? `La receta DEBE ser completamente compatible con una dieta ${dieta}` : 'No hay restricciones dietéticas específicas'}
 
-FORMATO DE RESPUESTA REQUERIDO:
-**🍳 [NOMBRE ATRACTIVO DE LA RECETA]**
+⚠️ IMPORTANTE: DEBES RESPONDER ÚNICAMENTE EN FORMATO JSON ⚠️
 
-**👥 Porciones:** ${personas} ${personas === '1' ? 'persona' : 'personas'}
+NO uses Markdown, NO uses texto explicativo, NO uses formato de receta tradicional.
+RESPONDE SOLAMENTE con el objeto JSON que se muestra a continuación:
 
-**📋 Ingredientes:**
-[Lista detallada con cantidades exactas ajustadas para ${personas} ${personas === '1' ? 'persona' : 'personas'}]
+{
+  "nombre": "Nombre atractivo de la receta",
+  "descripcion": "Breve descripción de 1-2 líneas",
+  "porciones": ${personas},
+  "tiempoPreparacion": "X minutos",
+  "tiempoCoccion": "X minutos", 
+  "tiempoTotal": "X minutos",
+  "ingredientes": [
+    "Ingrediente 1 con cantidad exacta",
+    "Ingrediente 2 con cantidad exacta"
+  ],
+  "instrucciones": [
+    "Paso 1 detallado",
+    "Paso 2 detallado"
+  ],
+  "informacionNutricional": {
+    "calorias": "X kcal",
+    "proteinas": "X g",
+    "grasas": "X g",
+    "carbohidratos": "X g",
+    "fibra": "X g",
+    "vitaminas": "Vitaminas y minerales destacados"
+  },
+  "consejosChef": [
+    "Consejo 1 del chef",
+    "Consejo 2 del chef"
+  ],
+  "listaCompra": {
+    "verduras": ["Verdura 1 cantidad"],
+    "carnes": ["Carne 1 cantidad"],
+    "lacteos": ["Lácteo 1 cantidad"],
+    "cereales": ["Cereal 1 cantidad"],
+    "frutas": ["Fruta 1 cantidad"],
+    "condimentos": ["Condimento 1 cantidad"],
+    "frutosSecos": ["Fruto seco 1 cantidad"],
+    "aceites": ["Aceite/Vinagre 1 cantidad"],
+    "otros": ["Otro producto 1 cantidad"]
+  }
+}
 
-**⏱️ Tiempo de preparación:** [X minutos]
-**⏱️ Tiempo de cocción:** [X minutos]
-**⏱️ Tiempo total:** [X minutos]
-
-**🔥 Instrucciones:**
-[Pasos numerados claros y detallados]
-
-**📊 INFORMACIÓN NUTRICIONAL (por porción):**
-- **Calorías aproximadas:** [X kcal]
-- **Proteínas:** [X g]
-- **Grasas:** [X g] 
-- **Carbohidratos:** [X g]
-- **Fibra:** [X g]
-- **Vitaminas y Minerales Destacados:** [Ejemplo: Vitamina A: 30% VD, Potasio: 12% VD, Magnesio: 18% VD]
-
-**💡 Consejos del Chef:**
-[1-2 consejos útiles para mejorar la receta]
-
-IMPORTANTE: La información nutricional es OBLIGATORIA y debe ser un cálculo aproximado realista basado en los ingredientes utilizados. Incluir siempre el porcentaje del Valor Diario Recomendado (%VD) para las vitaminas y minerales más importantes.`;
+REQUISITOS CRÍTICOS:
+1. JSON válido sin texto antes o después
+2. Información nutricional realista por porción
+3. Ingredientes con cantidades específicas para ${personas} ${personas === '1' ? 'persona' : 'personas'}
+4. Instrucciones paso a paso claras
+5. Lista de compra organizada por categorías`;
 
     return prompt;
 }
@@ -345,36 +367,58 @@ INSTRUCCIONES ESPECÍFICAS:
 - Mantén el espíritu de la receta original mientras incorporas las mejoras solicitadas
 - Explica claramente qué cambios hiciste y por qué
 
-FORMATO DE RESPUESTA REQUERIDO:
-**🔄 [NOMBRE DE LA RECETA ADAPTADA INTELIGENTEMENTE]**
+⚠️ IMPORTANTE: DEBES RESPONDER ÚNICAMENTE EN FORMATO JSON ⚠️
 
-**👥 Porciones:** ${personas} ${personas === '1' ? 'persona' : 'personas'}
+NO uses Markdown, NO uses texto explicativo, NO uses formato de receta tradicional.
+RESPONDE SOLAMENTE con el objeto JSON que se muestra a continuación:
 
-**📋 Ingredientes Adaptados:**
-[Lista completa con cantidades exactas ajustadas para ${personas} ${personas === '1' ? 'persona' : 'personas'}]
+{
+  "nombre": "Nombre de la receta adaptada inteligentemente",
+  "descripcion": "Breve descripción de 1-2 líneas",
+  "porciones": ${personas},
+  "adaptacionesRealizadas": "Explicación detallada de los cambios realizados según las solicitudes del usuario",
+  "tiempoPreparacion": "X minutos",
+  "tiempoCoccion": "X minutos", 
+  "tiempoTotal": "X minutos",
+  "ingredientes": [
+    "Ingrediente 1 adaptado con cantidad exacta",
+    "Ingrediente 2 adaptado con cantidad exacta"
+  ],
+  "instrucciones": [
+    "Paso 1 adaptado detallado",
+    "Paso 2 adaptado detallado"
+  ],
+  "informacionNutricional": {
+    "calorias": "X kcal",
+    "proteinas": "X g",
+    "grasas": "X g",
+    "carbohidratos": "X g",
+    "fibra": "X g",
+    "vitaminas": "Vitaminas y minerales destacados"
+  },
+  "consejosChef": [
+    "Consejo 1 específico sobre las adaptaciones",
+    "Consejo 2 para mejorar aún más la receta"
+  ],
+  "listaCompra": {
+    "verduras": ["Verdura 1 cantidad"],
+    "carnes": ["Carne 1 cantidad"],
+    "lacteos": ["Lácteo 1 cantidad"],
+    "cereales": ["Cereal 1 cantidad"],
+    "frutas": ["Fruta 1 cantidad"],
+    "condimentos": ["Condimento 1 cantidad"],
+    "frutosSecos": ["Fruto seco 1 cantidad"],
+    "aceites": ["Aceite/Vinagre 1 cantidad"],
+    "otros": ["Otro producto 1 cantidad"]
+  }
+}
 
-**🧠 Adaptaciones Inteligentes Realizadas:**
-[Explica detalladamente qué cambios se hicieron según las solicitudes del usuario y adaptaciones dietéticas]
-
-**⏱️ Tiempo de preparación:** [X minutos]
-**⏱️ Tiempo de cocción:** [X minutos] 
-**⏱️ Tiempo total:** [X minutos]
-
-**🔥 Instrucciones Adaptadas:**
-[Pasos numerados claros y detallados, adaptados a los nuevos ingredientes, técnicas y cantidad]
-
-**📊 INFORMACIÓN NUTRICIONAL (por porción):**
-- **Calorías aproximadas:** [X kcal]
-- **Proteínas:** [X g]
-- **Grasas:** [X g]
-- **Carbohidratos:** [X g]
-- **Fibra:** [X g]
-- **Vitaminas y Minerales Destacados:** [Ejemplo: Vitamina E: 25% VD, Zinc: 20% VD, Ácido Fólico: 35% VD]
-
-**💡 Consejos del Adaptador Inteligente:**
-[1-2 consejos específicos sobre las adaptaciones realizadas y cómo mejorar aún más la receta]
-
-IMPORTANTE: La información nutricional es OBLIGATORIA y debe reflejar la receta adaptada con todos los cambios e ingredientes nuevos. Incluir siempre el porcentaje del Valor Diario Recomendado (%VD) para las vitaminas y minerales más importantes.`;
+REQUISITOS CRÍTICOS:
+1. JSON válido sin texto antes o después
+2. Información nutricional adaptada a los nuevos ingredientes
+3. Explicar claramente las adaptaciones realizadas
+4. Ingredientes con cantidades específicas para ${personas} ${personas === '1' ? 'persona' : 'personas'}
+5. Instrucciones adaptadas a los cambios`;
 
     return prompt;
 }
@@ -622,8 +666,10 @@ INSTRUCCIONES:
 - Ajustar porciones para ${personas} ${personas === '1' ? 'persona' : 'personas'}
 - Incluir toda la información necesaria para preparar la receta
 
-FORMATO DE RESPUESTA OBLIGATORIO:
-Responde ÚNICAMENTE con un objeto JSON válido sin texto adicional:
+⚠️ IMPORTANTE: DEBES RESPONDER ÚNICAMENTE EN FORMATO JSON ⚠️
+
+NO uses Markdown, NO uses texto explicativo, NO uses formato de receta tradicional.
+RESPONDE SOLAMENTE con el objeto JSON que se muestra a continuación:
 
 {
   "nombre": "${nombreReceta}",
@@ -797,6 +843,53 @@ app.get('/test-pdf', (req, res) => {
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
+
+// Función para procesar respuestas y asegurar JSON válido
+function procesarRespuestaJSON(respuesta) {
+    console.log('🔄 Procesando respuesta de Gemini...');
+    console.log('📥 Respuesta original (primeros 200 chars):', respuesta.substring(0, 200));
+    
+    // Si ya es JSON válido, devolverlo tal cual
+    try {
+        const parsed = JSON.parse(respuesta);
+        console.log('✅ La respuesta ya era JSON válido');
+        return respuesta; // Devolver como string para mantener compatibilidad
+    } catch (e) {
+        console.log('⚠️ La respuesta no es JSON válido, intentando extraer JSON...');
+    }
+    
+    // Intentar extraer JSON de código Markdown
+    const jsonMatches = respuesta.match(/```json\s*([\s\S]*?)\s*```/);
+    if (jsonMatches) {
+        try {
+            const extractedJSON = jsonMatches[1].trim();
+            JSON.parse(extractedJSON); // Validar
+            console.log('✅ JSON extraído de código Markdown');
+            return extractedJSON;
+        } catch (e) {
+            console.log('❌ JSON extraído no es válido');
+        }
+    }
+    
+    // Intentar encontrar JSON en la respuesta buscando llaves
+    const startIndex = respuesta.indexOf('{');
+    const lastIndex = respuesta.lastIndexOf('}');
+    
+    if (startIndex !== -1 && lastIndex !== -1 && lastIndex > startIndex) {
+        try {
+            const possibleJSON = respuesta.substring(startIndex, lastIndex + 1);
+            JSON.parse(possibleJSON); // Validar
+            console.log('✅ JSON encontrado en la respuesta');
+            return possibleJSON;
+        } catch (e) {
+            console.log('❌ JSON encontrado no es válido');
+        }
+    }
+    
+    // Si todo falla, devolver la respuesta original
+    console.log('⚠️ No se pudo extraer JSON válido, devolviendo respuesta original');
+    return respuesta;
+}
 
 // Para desarrollo local
 if (process.env.NODE_ENV !== 'production') {
