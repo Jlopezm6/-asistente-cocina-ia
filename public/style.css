@@ -24,21 +24,50 @@
 
 body {
     font-family: 'Lato', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-    background-color: var(--color-fondo);
+    background: 
+        linear-gradient(135deg, #f0f9f6 0%, #e6f7f1 30%, #fff8f3 60%, #f0f9f6 100%),
+        radial-gradient(circle at 20% 80%, rgba(45, 106, 79, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 80% 20%, rgba(255, 140, 66, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 60% 60%, rgba(64, 224, 208, 0.06) 0%, transparent 50%);
+    background-size: 300% 300%, 600px 600px, 500px 500px, 800px 800px;
+    animation: gentleFlow 20s ease-in-out infinite;
     color: var(--color-texto);
     line-height: 1.6;
     min-height: 100vh;
     display: flex;
     justify-content: center;
     align-items: center;
-    padding: 40px 20px;
+    position: relative;
+}
+
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: 
+        radial-gradient(circle at 15% 30%, rgba(45, 106, 79, 0.12) 0%, transparent 30%),
+        radial-gradient(circle at 85% 70%, rgba(255, 140, 66, 0.12) 0%, transparent 30%),
+        radial-gradient(circle at 50% 90%, rgba(64, 224, 208, 0.08) 0%, transparent 35%),
+        radial-gradient(circle at 30% 10%, rgba(34, 197, 94, 0.08) 0%, transparent 25%),
+        radial-gradient(circle at 70% 40%, rgba(45, 106, 79, 0.06) 0%, transparent 40%);
+    pointer-events: none;
+    z-index: -1;
+    animation: floatingBubbles 25s ease-in-out infinite;
 }
 
 .container {
-    background: var(--color-blanco);
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(15px);
     padding: 50px;
-    border-radius: 20px;
-    box-shadow: 0 10px 40px var(--color-sombra);
+    border-radius: 25px;
+    box-shadow: 
+        0 8px 40px rgba(0, 0, 0, 0.12),
+        0 2px 16px rgba(45, 106, 79, 0.15),
+        inset 0 1px 0 rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.4);
     width: 100%;
     max-width: 900px;
     text-align: center;
@@ -1205,6 +1234,146 @@ input:focus-visible {
 .nutrition-grid div {
     font-weight: 500;
     color: var(--color-texto);
+}
+
+/* Frases motivadoras */
+.motivational-quote {
+    text-align: center;
+    margin: 1.5rem 0 2.5rem 0;
+    padding: 2rem 2.5rem;
+    background: transparent;
+    position: relative;
+    transition: all 0.6s ease;
+    animation: fadeInQuote 0.8s ease-in-out;
+    overflow: visible;
+}
+
+
+.motivational-quote::after {
+    display: none;
+}
+
+.motivational-quote::before {
+    display: none;
+}
+
+.motivational-quote p {
+    margin: 0;
+    font-size: 1.4rem;
+    font-weight: 700;
+    font-family: 'HGP創英角ポップ体', 'HGP SoeiKakugo', 'MS UI Gothic', sans-serif;
+    color: #FF8C42;
+    font-style: italic;
+    letter-spacing: 0.8px;
+    line-height: 1.4;
+    position: relative;
+    z-index: 2;
+    text-transform: none;
+    font-stretch: expanded;
+    transform: scaleX(1.2);
+}
+
+.motivational-quote:hover {
+    transform: scale(1.05);
+}
+
+@keyframes fadeInQuote {
+    from {
+        opacity: 0;
+        transform: translateY(-20px) scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes subtleGlow {
+    0%, 100% {
+        text-shadow: 
+            2px 2px 4px rgba(0,0,0,0.2),
+            0 0 8px #FF8C42,
+            0 0 16px #FF8C42;
+        filter: drop-shadow(0 0 10px #FF8C42);
+    }
+    50% {
+        text-shadow: 
+            2px 2px 4px rgba(0,0,0,0.2),
+            0 0 12px #FF8C42,
+            0 0 24px #FF8C42;
+        filter: drop-shadow(0 0 15px #FF8C42);
+    }
+}
+
+@keyframes verySubtleBacklight {
+    0%, 100% {
+        opacity: 0.2;
+        transform: translate(-50%, -50%) scale(1);
+    }
+    50% {
+        opacity: 0.35;
+        transform: translate(-50%, -50%) scale(1.05);
+    }
+}
+
+@keyframes simplePulse {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 0.7;
+        box-shadow: 
+            0 0 8px rgba(255, 255, 255, 0.6),
+            0 0 16px rgba(255, 140, 66, 0.4);
+    }
+    50% {
+        transform: scale(1.3);
+        opacity: 1;
+        box-shadow: 
+            0 0 12px rgba(255, 255, 255, 0.8),
+            0 0 24px rgba(255, 140, 66, 0.6);
+    }
+}
+
+
+/* Estilo para botones en la parte superior */
+.action-buttons-top {
+    margin-bottom: 2rem;
+    border-bottom: 2px solid var(--color-borde);
+    padding-bottom: 1.5rem;
+}
+
+/* Animaciones de fondo */
+@keyframes gentleFlow {
+    0%, 100% {
+        background-position: 0% 50%;
+    }
+    25% {
+        background-position: 100% 50%;
+    }
+    50% {
+        background-position: 100% 100%;
+    }
+    75% {
+        background-position: 50% 100%;
+    }
+}
+
+@keyframes floatingBubbles {
+    0%, 100% {
+        transform: translateY(0) rotate(0deg);
+        opacity: 0.6;
+    }
+    25% {
+        transform: translateY(-20px) rotate(90deg);
+        opacity: 0.8;
+    }
+    50% {
+        transform: translateY(-10px) rotate(180deg);
+        opacity: 0.4;
+    }
+    75% {
+        transform: translateY(-30px) rotate(270deg);
+        opacity: 0.7;
+    }
 }
 
 .recipe-ingredients ul,

@@ -5,8 +5,45 @@ document.addEventListener('DOMContentLoaded', () => {
     const generateBtn = document.getElementById('generate-button');
     const responseDiv = document.getElementById('response');
     const pdfTemplate = document.getElementById('pdf-template');
+    const motivationalQuote = document.getElementById('motivational-quote');
 
     let currentMode = 'receta-ingredientes';
+    
+    // --- FRASES MOTIVADORAS ---
+    const motivationalQuotes = [
+        "Estás a un paso de empezar a mejorar tu salud",
+        "No hay un día perfecto, el mejor momento es ahora",
+        "Cada comida saludable es una victoria personal",
+        "Tu cuerpo es tu hogar, cuídalo con amor",
+        "Pequeños cambios, grandes resultados",
+        "Plantando semillas de bienestar cada día",
+        "La salud es la mayor riqueza que puedes tener",
+        "Elevando tu energía con cada elección inteligente",
+        "Alimenta tu cuerpo, nutre tu alma",
+        "Eres el chef de tu propia transformación"
+    ];
+    
+    // Rotar frases motivadoras cada 8 segundos
+    let quoteIndex = 0;
+    function rotateQuote() {
+        if (motivationalQuote) {
+            // Efecto de fade out
+            motivationalQuote.style.opacity = '0';
+            motivationalQuote.style.transform = 'translateY(-20px)';
+            
+            setTimeout(() => {
+                motivationalQuote.innerHTML = `<p>${motivationalQuotes[quoteIndex]}</p>`;
+                // Efecto de fade in
+                motivationalQuote.style.opacity = '1';
+                motivationalQuote.style.transform = 'translateY(0)';
+                quoteIndex = (quoteIndex + 1) % motivationalQuotes.length;
+            }, 300);
+        }
+    }
+    
+    // Iniciar rotación de frases
+    rotateQuote(); // Mostrar primera frase inmediatamente
+    setInterval(rotateQuote, 12000); // Cambiar cada 12 segundos
 
     // --- INICIALIZACIÓN ---
     tabs.forEach(tab => {
@@ -237,9 +274,45 @@ document.addEventListener('DOMContentLoaded', () => {
         return true;
     }
 
-    function setLoading(isLoading) {
+    function setLoading(isLoading, mode = currentMode) {
         generateBtn.disabled = isLoading;
-        generateBtn.textContent = isLoading ? 'Generando...' : 'Generar';
+        
+        if (isLoading) {
+            const motivationalMessages = {
+                'receta-ingredientes': [
+                    '🍳 Creando tu receta perfecta...',
+                    '✨ Transformando ingredientes en magia...',
+                    '🥗 Preparando algo delicioso para ti...',
+                    '👨‍🍳 El chef IA está trabajando...'
+                ],
+                'limpia-neveras': [
+                    '🗄️ Aprovechando al máximo tu nevera...',
+                    '♻️ Creando magia con lo que tienes...',
+                    '🌟 Convirtiendo sobras en manjares...',
+                    '💚 Reduciendo desperdicio, creando sabor...'
+                ],
+                'adaptador-inteligente': [
+                    '🧠 Adaptando tu receta inteligentemente...',
+                    '🔄 Mejorando y personalizando...',
+                    '⚡ Optimizando tu receta favorita...',
+                    '🎯 Creando la versión perfecta para ti...'
+                ],
+                'plan-semanal': [
+                    '📅 Preparando tu plan semanal personalizado...',
+                    '🥇 Diseñando tu camino hacia una mejor salud...',
+                    '💪 Creando tu rutina nutricional perfecta...',
+                    '🎯 Planificando tu éxito nutricional...',
+                    '🌟 Construyendo hábitos saludables para ti...',
+                    '🚀 Elevando tu bienestar a otro nivel...'
+                ]
+            };
+            
+            const messages = motivationalMessages[mode] || motivationalMessages['receta-ingredientes'];
+            const randomMessage = messages[Math.floor(Math.random() * messages.length)];
+            generateBtn.textContent = randomMessage;
+        } else {
+            generateBtn.textContent = 'Generar';
+        }
     }
     
     function renderResponse(data, mode, originalFormData) {
@@ -467,20 +540,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <p><strong>Objetivo calórico:</strong> ${originalFormData.caloriasObjetivo} kcal/día</p>
                 </div>
                 
-                <div class="completion-notice">
-                    <p>✨ <strong>¡Plan completo!</strong> Todas las recetas han sido enriquecidas con ingredientes, instrucciones y consejos detallados. Haz click en cualquier receta para ver sus detalles.</p>
-                </div>
-                
-                <div class="days-grid">
-                    ${renderDaysGrid(data.planSemanal, true)}
-                </div>
-                
-                <div class="shopping-list">
-                    <h4>🛒 Lista de la Compra Semanal</h4>
-                    ${renderShoppingList(data.listaCompra)}
-                </div>
-                
-                <div class="action-buttons">
+                <div class="action-buttons action-buttons-top">
                     <button id="copy-shopping-btn" class="action-btn copy-btn">
                         📋 Copiar Lista de Compra
                     </button>
@@ -493,6 +553,19 @@ document.addEventListener('DOMContentLoaded', () => {
                     <button id="download-recipes-btn" class="action-btn recipes-btn">
                         📖 Descargar Recetario PDF
                     </button>
+                </div>
+                
+                <div class="completion-notice">
+                    <p>✨ <strong>¡Plan completo!</strong> Tu plan nutricional personalizado está listo. Usa los botones de arriba para descargar o gestionar tu plan.</p>
+                </div>
+                
+                <div class="days-grid">
+                    ${renderDaysGrid(data.planSemanal, true)}
+                </div>
+                
+                <div class="shopping-list">
+                    <h4>🛒 Lista de la Compra Semanal</h4>
+                    ${renderShoppingList(data.listaCompra)}
                 </div>
             </div>
         `;
