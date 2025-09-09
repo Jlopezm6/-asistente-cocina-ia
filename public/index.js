@@ -854,17 +854,22 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>
                     ` : ''}
                     
-                    ${content.informacionNutricional || content.calorias ? `
+                    ${content.informacionNutricional ? `
                         <div class="recipe-nutrition">
                             <h4>📊 Información Nutricional (por porción)</h4>
                             <div class="nutrition-grid">
-                                ${content.calorias ? `<div>Calorías: ${content.calorias} kcal</div>` : ''}
-                                ${content.proteinas ? `<div>Proteínas: ${content.proteinas}g</div>` : ''}
-                                ${content.grasas ? `<div>Grasas: ${content.grasas}g</div>` : ''}
-                                ${content.carbohidratos ? `<div>Carbohidratos: ${content.carbohidratos}g</div>` : ''}
-                                ${content.informacionNutricional?.fibra ? `<div>Fibra: ${content.informacionNutricional.fibra}g</div>` : ''}
-                                ${content.informacionNutricional?.vitaminas ? `<div>Vitaminas: ${content.informacionNutricional.vitaminas}</div>` : ''}
+                                ${content.informacionNutricional.calorias ? `<div><strong>🔥 Calorías:</strong> ${content.informacionNutricional.calorias}</div>` : ''}
+                                ${content.informacionNutricional.proteinas ? `<div><strong>🥩 Proteínas:</strong> ${content.informacionNutricional.proteinas}</div>` : ''}
+                                ${content.informacionNutricional.grasas ? `<div><strong>🧈 Grasas:</strong> ${content.informacionNutricional.grasas}</div>` : ''}
+                                ${content.informacionNutricional.carbohidratos ? `<div><strong>🌾 Carbohidratos:</strong> ${content.informacionNutricional.carbohidratos}</div>` : ''}
+                                ${content.informacionNutricional.fibra ? `<div><strong>🌿 Fibra:</strong> ${content.informacionNutricional.fibra}</div>` : ''}
                             </div>
+                            ${content.informacionNutricional.vitaminas ? `
+                                <div class="nutrition-vitamins">
+                                    <h5>🍊 Vitaminas y Minerales Destacados:</h5>
+                                    <p>${content.informacionNutricional.vitaminas}</p>
+                                </div>
+                            ` : ''}
                         </div>
                     ` : ''}
                     
