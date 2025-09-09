@@ -694,18 +694,47 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     function renderShoppingList(listaCompra) {
-        return `
-            <div class="categories-grid">
-                ${listaCompra.map(categoria => `
-                    <div class="category-card">
-                        <h6 class="category-title">${getCategoryEmoji(categoria.categoria)} ${categoria.categoria}</h6>
-                        <ul class="items-list">
-                            ${categoria.items.map(item => `<li>• ${item}</li>`).join('')}
-                        </ul>
-                    </div>
-                `).join('')}
-            </div>
-        `;
+        // Si listaCompra es un array (formato antiguo), usar la lógica anterior
+        if (Array.isArray(listaCompra)) {
+            return `
+                <div class="categories-grid">
+                    ${listaCompra.map(categoria => `
+                        <div class="category-card">
+                            <h6 class="category-title">${getCategoryEmoji(categoria.categoria)} ${categoria.categoria}</h6>
+                            <ul class="items-list">
+                                ${categoria.items.map(item => `<li>• ${item}</li>`).join('')}
+                            </ul>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+        
+        // Si es un objeto (nuevo formato JSON), convertir a categorías
+        if (typeof listaCompra === 'object' && listaCompra !== null) {
+            const categorias = Object.entries(listaCompra)
+                .filter(([key, items]) => Array.isArray(items) && items.length > 0)
+                .map(([key, items]) => ({
+                    categoria: getCategoryName(key),
+                    items: items
+                }));
+            
+            return `
+                <div class="categories-grid">
+                    ${categorias.map(categoria => `
+                        <div class="category-card">
+                            <h6 class="category-title">${getCategoryEmoji(categoria.categoria)} ${categoria.categoria}</h6>
+                            <ul class="items-list">
+                                ${categoria.items.map(item => `<li>• ${item}</li>`).join('')}
+                            </ul>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+        
+        // Fallback si no hay lista de compra
+        return '<p>Lista de compra no disponible</p>';
     }
     
     function renderSingleRecipe(data, mode) {
@@ -715,27 +744,33 @@ document.addEventListener('DOMContentLoaded', () => {
             'adaptador-inteligente': '🔄 Tu Receta Adaptada'
         };
         
-        // Intentar parsear el resultado si viene como string JSON
-        let recipeData = data;
-        let recipeContent = data.receta || data.resultado;
+        console.log('🎨 Renderizando receta individual. Data:', data);
         
-        if (typeof recipeContent === 'string') {
+        // Si data ya es un objeto con estructura de receta (nuevo formato JSON)
+        let recipeData = data;
+        let recipeContent = data;
+        
+        // Si data tiene una propiedad 'resultado' que es string (formato antiguo)
+        if (data.resultado && typeof data.resultado === 'string') {
             try {
                 // Limpiar markdown si existe
-                if (recipeContent.startsWith('```json')) {
-                    recipeContent = recipeContent.substring(7, recipeContent.length - 3).trim();
+                let resultString = data.resultado;
+                if (resultString.startsWith('```json')) {
+                    resultString = resultString.substring(7, resultString.length - 3).trim();
                 }
-                if (recipeContent.startsWith('```')) {
-                    recipeContent = recipeContent.substring(3, recipeContent.length - 3).trim();
+                if (resultString.startsWith('```')) {
+                    resultString = resultString.substring(3, resultString.length - 3).trim();
                 }
                 
                 // Intentar parsear como JSON
-                const parsedData = JSON.parse(recipeContent);
-                recipeData = { ...data, ...parsedData };
+                const parsedData = JSON.parse(resultString);
+                recipeData = parsedData;
                 recipeContent = parsedData;
+                console.log('✅ Parseado desde resultado string:', parsedData);
             } catch (e) {
                 // Si no es JSON, mantener como texto formateado
-                console.log('No es JSON, renderizando como texto:', e);
+                console.log('⚠️ No es JSON, renderizando como texto:', e);
+                recipeContent = data.resultado;
             }
         }
         
@@ -1405,6 +1440,21 @@ document.addEventListener('DOMContentLoaded', () => {
             'Otros Productos': '📦'
         };
         return emojis[categoria] || '📦';
+    }
+    
+    function getCategoryName(key) {
+        const names = {
+            'verduras': 'Verduras y Hortalizas',
+            'carnes': 'Carnes y Pescados',
+            'lacteos': 'Lácteos y Huevos',
+            'cereales': 'Cereales y Legumbres',
+            'frutas': 'Frutas',
+            'condimentos': 'Condimentos y Especias',
+            'frutosSecos': 'Frutos Secos y Semillas',
+            'aceites': 'Aceites y Vinagres',
+            'otros': 'Otros Productos'
+        };
+        return names[key] || 'Otros Productos';
     }
     
     function formatRecipeText(text) {
