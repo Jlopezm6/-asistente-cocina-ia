@@ -98,10 +98,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- LÓGICA PRINCIPAL ---
     async function handleGenerate() {
+        console.log('🚀 Iniciando generación con modo:', currentMode);
         const formData = collectFormData(currentMode);
+        console.log('📋 FormData completo:', formData);
         
         // Validar datos básicos
         if (!validateFormData(formData, currentMode)) {
+            console.error('❌ Validación fallida');
             return;
         }
         
@@ -118,12 +121,29 @@ document.addEventListener('DOMContentLoaded', () => {
             const responseData = await response.json();
             let resultText = responseData.resultado;
             
+            console.log('📥 Respuesta cruda del servidor:', resultText.substring(0, 200) + '...');
+            
             // Limpiar markdown si existe
             if (resultText.startsWith('```json')) {
                 resultText = resultText.substring(7, resultText.length - 3).trim();
             }
             
-            const data = JSON.parse(resultText);
+            let data;
+            try {
+                data = JSON.parse(resultText);
+                console.log('✅ JSON parseado correctamente:', data);
+            } catch (jsonError) {
+                console.error('❌ Error parseando JSON:', jsonError);
+                console.log('📄 Texto que causó el error:', resultText.substring(0, 500));
+                
+                // Si no es JSON válido, tratar como texto plano
+                data = {
+                    tipo: 'texto',
+                    contenido: resultText,
+                    modo: currentMode
+                };
+                console.log('🔧 Usando fallback de texto plano');
+            }
             
             // Almacenar datos para uso posterior
             window.lastResponseData = data;
@@ -238,9 +258,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     function validateFormData(data, mode) {
+        console.log('🔍 Validando datos para modo:', mode);
+        console.log('📊 Datos a validar:', data);
+        
         switch (mode) {
             case 'receta-ingredientes':
-                if (!data.ingredientesPrincipales) {
+                console.log('🥕 Validando ingredientes principales:', data.ingredientesPrincipales);
+                if (!data.ingredientesPrincipales || data.ingredientesPrincipales.trim() === '') {
+                    console.error('❌ ingredientesPrincipales está vacío');
                     alert('Por favor, ingresa al menos un ingrediente principal');
                     return false;
                 }
@@ -316,6 +341,21 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     function renderResponse(data, mode, originalFormData) {
+        console.log('🎨 Renderizando respuesta. Modo:', mode, 'Data:', data);
+        
+        // Si es solo texto plano (fallback), mostrarlo como tal
+        if (data.tipo === 'texto') {
+            responseDiv.innerHTML = `
+                <div class="single-recipe-container">
+                    <h3>Resultado (Formato Texto)</h3>
+                    <div class="recipe-text-content">
+                        <pre>${data.contenido}</pre>
+                    </div>
+                </div>
+            `;
+            return;
+        }
+        
         if (mode === 'plan-semanal' && data.planSemanal && data.listaCompra) {
             // TEMPORALMENTE DESACTIVADO: Enriquecimiento progresivo para evitar rate limiting
             // startProgressiveEnrichment(data, originalFormData);
