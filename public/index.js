@@ -57,9 +57,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     generateBtn.addEventListener('click', handleGenerate);
     
+    // --- UTILIDADES PDF ---
+    function checkHTML2PDF() {
+        if (typeof html2pdf === 'undefined') {
+            console.error('❌ html2pdf no está disponible');
+            alert('Error: La librería de generación de PDF no está disponible. Recarga la página e inténtalo de nuevo.');
+            return false;
+        }
+        return true;
+    }
+    
     // TEMPORAL: Función de prueba para PDF
     window.testPDF = async function() {
         console.log('🧪 Probando PDF simple...');
+        
+        if (!checkHTML2PDF()) return;
         
         try {
             const response = await fetch('/test-pdf');
@@ -71,23 +83,32 @@ document.addEventListener('DOMContentLoaded', () => {
             pdfTemplate.style.visibility = 'visible';
             
             const options = {
-                margin: 0.5,
+                margin: [0.5, 0.5, 0.5, 0.5],
                 filename: 'test-calendario.pdf',
+                image: { type: 'jpeg', quality: 0.95 },
                 html2canvas: { 
-                    scale: 1,
-                    backgroundColor: '#ffffff'
+                    scale: 2,
+                    useCORS: true,
+                    allowTaint: true,
+                    backgroundColor: '#ffffff',
+                    logging: false,
+                    letterRendering: true
                 },
                 jsPDF: { 
                     unit: 'in',
                     format: 'a4',
-                    orientation: 'landscape' 
+                    orientation: 'landscape',
+                    compress: true
                 }
             };
             
-            await new Promise(resolve => setTimeout(resolve, 500));
+            // Esperar más tiempo y asegurar que las fuentes se carguen
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            await document.fonts.ready;
             await html2pdf().set(options).from(pdfTemplate).save();
             
             pdfTemplate.style.display = 'none';
+            pdfTemplate.style.visibility = 'hidden';
             pdfTemplate.innerHTML = '';
             
             console.log('✅ PDF de prueba generado');
@@ -975,6 +996,8 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         
+        if (!checkHTML2PDF()) return;
+        
         console.log('📅 Datos que se enviarán para calendario PDF:', window.lastFormData);
         
         const btn = document.getElementById('download-calendar-btn');
@@ -1024,43 +1047,46 @@ document.addEventListener('DOMContentLoaded', () => {
             pdfTemplate.style.height = 'auto';
             pdfTemplate.style.zIndex = '9999';
             
-            // Configurar opciones para calendario (landscape) - más simples para mejor compatibilidad
+            // Configurar opciones mejoradas para calendario (landscape)
             const options = {
-                margin: 0.5,
+                margin: [0.5, 0.5, 0.5, 0.5],
                 filename: 'calendario-semanal.pdf',
-                image: { type: 'jpeg', quality: 0.98 },
+                image: { type: 'jpeg', quality: 0.95 },
                 html2canvas: { 
-                    scale: 1,
+                    scale: 2,
                     useCORS: true,
                     allowTaint: true,
                     backgroundColor: '#ffffff',
                     logging: false,
-                    width: 1200,
-                    height: 800
+                    letterRendering: true,
+                    onrendered: function() {
+                        console.log('Canvas renderizado para calendario');
+                    }
                 },
                 jsPDF: { 
                     unit: 'in',
-                    format: [11, 8.5],
-                    orientation: 'landscape' 
-                }
+                    format: 'a4',
+                    orientation: 'landscape',
+                    compress: true
+                },
+                pagebreak: { mode: 'avoid-all' }
             };
             
-            // Crear blob con el HTML y descargar
-            const blob = new Blob([htmlCalendario], { type: 'text/html' });
-            const url = URL.createObjectURL(blob);
+            // Esperar a que el contenido se renderice completamente
+            await new Promise(resolve => setTimeout(resolve, 1000));
             
-            // Crear enlace de descarga
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'calendario-semanal.html';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
+            // Asegurar que las fuentes se carguen
+            await document.fonts.ready;
+            
+            // Generar PDF usando html2pdf
+            await html2pdf().set(options).from(pdfTemplate).save();
             
             // Limpiar template
             pdfTemplate.innerHTML = '';
-            btn.textContent = '✅ Archivo HTML descargado';
+            pdfTemplate.style.display = 'none';
+            pdfTemplate.style.visibility = 'hidden';
+            
+            btn.textContent = '✅ Calendario PDF descargado';
             btn.style.backgroundColor = '#22c55e';
             
             setTimeout(() => {
@@ -1074,8 +1100,15 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.textContent = originalText;
             btn.disabled = false;
             
+            // Limpiar template en caso de error
+            pdfTemplate.innerHTML = '';
+            pdfTemplate.style.display = 'none';
+            pdfTemplate.style.visibility = 'hidden';
+            
             if (error.message.includes('429') || error.message.includes('Demasiadas')) {
                 alert('Demasiadas peticiones a la IA. Por favor espera 30 segundos e inténtalo de nuevo.');
+            } else if (error.message.includes('html2pdf')) {
+                alert('Error al generar el PDF. Verifica que tengas conexión a internet e inténtalo de nuevo.');
             } else {
                 alert('Error al generar el calendario PDF. Inténtalo de nuevo.');
             }
@@ -1087,6 +1120,8 @@ document.addEventListener('DOMContentLoaded', () => {
             alert('No hay datos de plan disponibles. Genera primero un plan semanal.');
             return;
         }
+        
+        if (!checkHTML2PDF()) return;
         
         const btn = document.getElementById('download-recipes-btn');
         const originalText = btn.textContent;
@@ -1132,44 +1167,49 @@ document.addEventListener('DOMContentLoaded', () => {
             pdfTemplate.style.height = 'auto';
             pdfTemplate.style.zIndex = '9999';
             
-            // Configurar opciones para recetario (portrait) - más simples para mejor compatibilidad
+            // Configurar opciones mejoradas para recetario (portrait)
             const options = {
-                margin: 0.5,
+                margin: [0.7, 0.5, 0.7, 0.5],
                 filename: 'recetario-semanal.pdf',
-                image: { type: 'jpeg', quality: 0.98 },
+                image: { type: 'jpeg', quality: 0.95 },
                 html2canvas: { 
-                    scale: 1,
+                    scale: 2,
                     useCORS: true,
                     allowTaint: true,
                     backgroundColor: '#ffffff',
                     logging: false,
-                    width: 800,
-                    height: 1000
+                    letterRendering: true,
+                    onrendered: function() {
+                        console.log('Canvas renderizado para recetario');
+                    }
                 },
                 jsPDF: { 
                     unit: 'in',
-                    format: [8.5, 11],
-                    orientation: 'portrait' 
+                    format: 'a4',
+                    orientation: 'portrait',
+                    compress: true
                 },
-                pagebreak: { mode: ['avoid-all', 'css'] }
+                pagebreak: { 
+                    mode: ['avoid-all', 'css', 'legacy'],
+                    avoid: ['tr', '.recipe-item']
+                }
             };
             
-            // Crear blob con el HTML y descargar
-            const blob = new Blob([htmlRecetario], { type: 'text/html' });
-            const url = URL.createObjectURL(blob);
+            // Esperar a que el contenido se renderice completamente
+            await new Promise(resolve => setTimeout(resolve, 1500));
             
-            // Crear enlace de descarga
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'recetario-semanal.html';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
+            // Asegurar que las fuentes se carguen
+            await document.fonts.ready;
+            
+            // Generar PDF usando html2pdf
+            await html2pdf().set(options).from(pdfTemplate).save();
             
             // Limpiar template
             pdfTemplate.innerHTML = '';
-            btn.textContent = '✅ Archivo HTML descargado';
+            pdfTemplate.style.display = 'none';
+            pdfTemplate.style.visibility = 'hidden';
+            
+            btn.textContent = '✅ Recetario PDF descargado';
             btn.style.backgroundColor = '#22c55e';
             
             setTimeout(() => {
@@ -1183,8 +1223,15 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.textContent = originalText;
             btn.disabled = false;
             
+            // Limpiar template en caso de error
+            pdfTemplate.innerHTML = '';
+            pdfTemplate.style.display = 'none';
+            pdfTemplate.style.visibility = 'hidden';
+            
             if (error.message.includes('429') || error.message.includes('Demasiadas')) {
                 alert('Demasiadas peticiones a la IA. Por favor espera 30 segundos e inténtalo de nuevo.');
+            } else if (error.message.includes('html2pdf')) {
+                alert('Error al generar el PDF. Verifica que tengas conexión a internet e inténtalo de nuevo.');
             } else {
                 alert('Error al generar el recetario PDF. Inténtalo de nuevo.');
             }
