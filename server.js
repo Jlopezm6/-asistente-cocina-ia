@@ -81,7 +81,7 @@ app.post('/api/generate', async (req, res) => {
 app.post('/api/generate-calendar-pdf', async (req, res) => {
     try {
         console.log('📅 Datos recibidos para calendario PDF:', req.body);
-        const { mode, caloriasObjetivo, comidasSeleccionadas, preferencias, personas, dieta } = req.body;
+        const { mode, caloriasObjetivo, comidasSeleccionadas, preferencias, personas, dieta, existingPlan } = req.body;
 
         // Validación específica para plan semanal
         if (!caloriasObjetivo || caloriasObjetivo < 800 || caloriasObjetivo > 5000) {
@@ -99,10 +99,12 @@ app.post('/api/generate-calendar-pdf', async (req, res) => {
             return res.status(500).json({ error: 'API key no configurada' });
         }
 
+        // TEMPORALMENTE: usar método original hasta arreglar el plan completo
+        console.log('🆕 Generando calendario con vitaminas mejoradas');
         const prompt = construirPromptCalendarioPDF({ caloriasObjetivo, comidasSeleccionadas, preferencias, personas, dieta });
         console.log('📝 Prompt calendario PDF generado, longitud:', prompt.length);
-        
         const htmlCalendario = await llamarGeminiAPI(prompt, apiKey);
+        
         console.log('✅ HTML calendario generado, longitud:', htmlCalendario.length);
 
         res.json({ htmlCalendario });
@@ -185,6 +187,30 @@ app.post('/api/get-recipe-details', async (req, res) => {
     }
 });
 
+// Nueva ruta para obtener instrucciones de todas las recetas de un plan
+app.post('/api/instrucciones-plan', async (req, res) => {
+    try {
+        const { planSemanal, personas, dieta } = req.body;
+
+        if (!planSemanal || !personas || !dieta) {
+            return res.status(400).json({ error: 'Plan semanal, número de personas y dieta son requeridos' });
+        }
+
+        const apiKey = process.env.GEMINI_API_KEY;
+        if (!apiKey) {
+            return res.status(500).json({ error: 'API key no configurada' });
+        }
+
+        const prompt = construirPromptInstruccionesPlan(planSemanal, personas, dieta);
+        const instrucciones = await llamarGeminiAPI(prompt, apiKey);
+
+        res.json({ instrucciones });
+    } catch (error) {
+        console.error('Error obteniendo instrucciones del plan:', error);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
+});
+
 function construirPrompt(mode, data) {
     let prompt = '';
     
@@ -218,10 +244,20 @@ INSTRUCCIONES ESPECÍFICAS:
 - ${dieta !== 'ninguna' ? `La receta DEBE ser completamente compatible con una dieta ${dieta}` : 'No hay restricciones dietéticas específicas'}
 - Sugiere una receta equilibrada y nutritiva
 
-⚠️ IMPORTANTE: DEBES RESPONDER ÚNICAMENTE EN FORMATO JSON ⚠️
+🚨 ATENCIÓN: RESPUESTA SOLO JSON - SIN EXCEPCIONES 🚨
 
-NO uses Markdown, NO uses texto explicativo, NO uses formato de receta tradicional.
-RESPONDE SOLAMENTE con el objeto JSON que se muestra a continuación:
+ESTRICTAMENTE PROHIBIDO:
+❌ Explicaciones, comentarios, notas
+❌ Frases como "Es importante", "Se recomienda", "Es crucial"
+❌ Cualquier texto antes o después del JSON
+❌ Consejos nutricionales adicionales
+
+OBLIGATORIO:
+✅ SOLO el JSON completo con los 7 días
+✅ Empezar directamente con bloque de código json
+✅ Terminar directamente con cierre de bloque
+
+RESPONDER ÚNICAMENTE ESTO:
 
 {
   "nombre": "Nombre atractivo de la receta",
@@ -288,10 +324,20 @@ INSTRUCCIONES ESPECÍFICAS:
 - Ajusta todas las cantidades exactamente para ${personas} ${personas === '1' ? 'persona' : 'personas'}
 - ${dieta !== 'ninguna' ? `La receta DEBE ser completamente compatible con una dieta ${dieta}` : 'No hay restricciones dietéticas específicas'}
 
-⚠️ IMPORTANTE: DEBES RESPONDER ÚNICAMENTE EN FORMATO JSON ⚠️
+🚨 ATENCIÓN: RESPUESTA SOLO JSON - SIN EXCEPCIONES 🚨
 
-NO uses Markdown, NO uses texto explicativo, NO uses formato de receta tradicional.
-RESPONDE SOLAMENTE con el objeto JSON que se muestra a continuación:
+ESTRICTAMENTE PROHIBIDO:
+❌ Explicaciones, comentarios, notas
+❌ Frases como "Es importante", "Se recomienda", "Es crucial"
+❌ Cualquier texto antes o después del JSON
+❌ Consejos nutricionales adicionales
+
+OBLIGATORIO:
+✅ SOLO el JSON completo con los 7 días
+✅ Empezar directamente con bloque de código json
+✅ Terminar directamente con cierre de bloque
+
+RESPONDER ÚNICAMENTE ESTO:
 
 {
   "nombre": "Nombre atractivo de la receta",
@@ -367,10 +413,20 @@ INSTRUCCIONES ESPECÍFICAS:
 - Mantén el espíritu de la receta original mientras incorporas las mejoras solicitadas
 - Explica claramente qué cambios hiciste y por qué
 
-⚠️ IMPORTANTE: DEBES RESPONDER ÚNICAMENTE EN FORMATO JSON ⚠️
+🚨 ATENCIÓN: RESPUESTA SOLO JSON - SIN EXCEPCIONES 🚨
 
-NO uses Markdown, NO uses texto explicativo, NO uses formato de receta tradicional.
-RESPONDE SOLAMENTE con el objeto JSON que se muestra a continuación:
+ESTRICTAMENTE PROHIBIDO:
+❌ Explicaciones, comentarios, notas
+❌ Frases como "Es importante", "Se recomienda", "Es crucial"
+❌ Cualquier texto antes o después del JSON
+❌ Consejos nutricionales adicionales
+
+OBLIGATORIO:
+✅ SOLO el JSON completo con los 7 días
+✅ Empezar directamente con bloque de código json
+✅ Terminar directamente con cierre de bloque
+
+RESPONDER ÚNICAMENTE ESTO:
 
 {
   "nombre": "Nombre de la receta adaptada inteligentemente",
@@ -440,18 +496,29 @@ function construirPromptPlanSemanal(data) {
     let prompt = `Eres un nutricionista experto. Crea un plan de comidas semanal básico con nombres de recetas y información nutricional completa.
 
 PARÁMETROS DEL PLAN:
-- OBJETIVO CALÓRICO DIARIO: ${caloriasObjetivo} kcal
+- OBJETIVO CALÓRICO DIARIO: ${caloriasObjetivo} kcal (OBLIGATORIO: cada día debe sumar EXACTAMENTE ${caloriasObjetivo} kcal)
 - COMIDAS A PLANIFICAR: ${comidasTexto}
 - NÚMERO DE PERSONAS: ${personas}
 - TIPO DE DIETA: ${dieta}
 - PREFERENCIAS: ${preferencias || 'Sin preferencias específicas'}
 
-INSTRUCCIONES:
+INSTRUCCIONES ESTRICTAS:
 - Crear plan para 7 días (Lunes a Domingo)
-- Solo nombres de recetas con información nutricional completa
+- CADA DÍA debe sumar EXACTAMENTE ${caloriasObjetivo} kcal (±25 kcal máximo)
+- Incluir información nutricional COMPLETA con vitaminas
+- Solo nombres de recetas (sin instrucciones de preparación)
 - ${dieta !== 'ninguna' ? `Compatible con dieta ${dieta}` : 'Sin restricciones dietéticas'}
 - Lista de compra básica por categorías
-- Incluir vitaminas y minerales destacados por receta
+
+INFORMACIÓN NUTRICIONAL OBLIGATORIA por receta:
+- Calorías exactas
+- Proteínas (gramos)
+- Grasas (gramos) 
+- Carbohidratos (gramos)
+- Vitamina C (mg)
+- Vitamina D (μg)
+- Calcio (mg)
+- Hierro (mg)
 
 FORMATO DE RESPUESTA OBLIGATORIO:
 Responde ÚNICAMENTE con un objeto JSON válido:
@@ -469,7 +536,10 @@ Responde ÚNICAMENTE con un objeto JSON válido:
           "grasas": 8,
           "carbohidratos": 45,
           "fibra": 6,
-          "vitaminas": "Vitamina C: 45% VD, Hierro: 15% VD, Magnesio: 20% VD"
+          "vitaminaC": 40,
+          "vitaminaD": 2.5,
+          "calcio": 150,
+          "hierro": 3.2
         }
       ],
       "totalCalorias": ${caloriasObjetivo},
@@ -478,7 +548,10 @@ Responde ÚNICAMENTE con un objeto JSON válido:
         "grasas": 65,
         "carbohidratos": 280,
         "fibra": 30,
-        "vitaminasDestacadas": "Vitamina A: 120% VD, Vitamina C: 180% VD, Calcio: 95% VD"
+        "vitaminaC": 120,
+        "vitaminaD": 8.5,
+        "calcio": 850,
+        "hierro": 15.2
       }
     }
   ],
@@ -531,15 +604,20 @@ PARÁMETROS DEL PLAN:
 - PREFERENCIAS: ${preferencias || 'Sin preferencias específicas'}
 
 PASO 1: Crear plan semanal completo (7 días)
+- IMPORTANTE: Cada día debe sumar EXACTAMENTE ${caloriasObjetivo} kcal (no menos)
+- Distribuir calorías equilibradamente entre las comidas seleccionadas
+- Incluir información nutricional COMPLETA con vitaminas
+
 PASO 2: Generar HTML para PDF calendario apaisado
 
 INSTRUCCIONES HTML:
 - HTML completo autónomo con CSS inline
-- Diseño calendario tabla/rejilla para 7 días
+- Diseño calendario tabla/rejilla para 7 días, responsive
 - Estilo profesional: Principal #2D6A4F, Acento #FF8C42, Fondo #F8F9FA
-- Tipografía: Poppins títulos, Lato texto
-- Formato A4 horizontal (landscape)
-- Información nutricional por día
+- Tipografía: Poppins títulos (bold), Lato texto (regular)
+- Formato A4 horizontal (landscape), márgenes 0.5in
+- Bordes sutiles, espaciado consistente, colores contrastados
+- Información nutricional bien organizada en tablas pequeñas
 
 FORMATO DE RESPUESTA:
 Responde ÚNICAMENTE con el HTML completo, sin texto adicional ni markdown.
@@ -547,11 +625,80 @@ Responde ÚNICAMENTE con el HTML completo, sin texto adicional ni markdown.
 El HTML debe incluir:
 1. Encabezado "CALENDARIO SEMANAL" y fecha ${fechaHoy}
 2. Tabla 7 días con comidas, nombres recetas, calorías
-3. Resumen nutricional diario (proteínas, grasas, carbohidratos)
+3. TABLA NUTRICIONAL OBLIGATORIA por cada día:
+   - CALORÍAS: exactamente ${caloriasObjetivo} kcal
+   - PROTEÍNAS: X gramos (X% VD)
+   - GRASAS: X gramos (X% VD) 
+   - CARBOHIDRATOS: X gramos (X% VD)
+   - VITAMINA C: X mg (X% VD)
+   - VITAMINA D: X μg (X% VD)
+   - CALCIO: X mg (X% VD)
+   - HIERRO: X mg (X% VD)
+   
+   EJEMPLO FORMATO:
+   <table class="nutrition-table">
+   <tr><td>Calorías</td><td>2000 kcal</td><td>100% VD</td></tr>
+   <tr><td>Vitamina C</td><td>90 mg</td><td>100% VD</td></tr>
+   </table>
 4. Info plan (${personas} personas, dieta ${dieta}) en pie
 5. CSS inline para estilos profesionales
 
+VALIDACIONES CRÍTICAS:
+✓ Verificar que cada día sume ${caloriasObjetivo} kcal (±50 kcal máximo)
+✓ Incluir TODAS las vitaminas y minerales mencionados
+✓ Mostrar porcentajes % VD correctamente calculados
+✓ HTML debe ser autónomo y completo
+
 IMPORTANTE: Solo HTML puro, sin explicaciones ni bloques de código. Crear el plan completo y luego el HTML.`;
+
+    return prompt;
+}
+
+// Nueva función para generar HTML de calendario con plan existente
+function construirPromptHTMLCalendario(planData, metaData) {
+    const { caloriasObjetivo, personas, dieta } = metaData;
+    const fechaHoy = new Date().toLocaleDateString('es-ES');
+    
+    let prompt = `Eres un diseñador experto. Tienes un plan semanal completo y debes convertirlo en HTML profesional para calendario PDF.
+
+PLAN SEMANAL EXISTENTE:
+${JSON.stringify(planData.planSemanal, null, 2)}
+
+INFORMACIÓN DEL PLAN:
+- OBJETIVO CALÓRICO: ${caloriasObjetivo} kcal por día
+- NÚMERO DE PERSONAS: ${personas}
+- TIPO DE DIETA: ${dieta}
+- FECHA: ${fechaHoy}
+
+TAREA: Generar HTML calendario profesional que muestre este plan exacto.
+
+INSTRUCCIONES HTML:
+- HTML completo autónomo con CSS inline
+- Diseño calendario tabla/rejilla para 7 días, responsive
+- Estilo profesional: Principal #2D6A4F, Acento #FF8C42, Fondo #F8F9FA
+- Tipografía: Poppins títulos (bold), Lato texto (regular)
+- Formato A4 horizontal (landscape), márgenes 0.5in
+- Bordes sutiles, espaciado consistente, colores contrastados
+
+CONTENIDO OBLIGATORIO:
+1. Encabezado "CALENDARIO SEMANAL" y fecha ${fechaHoy}
+2. Tabla 7 días con comidas del plan existente
+3. Información nutricional COMPLETA por día:
+   - Calorías exactas del plan
+   - Macronutrientes: proteínas, grasas, carbohidratos (g y % VD)
+   - Vitaminas: C, D, A (con unidades y % VD)
+   - Minerales: calcio, hierro, potasio (mg y % VD)
+   - VD = Valor Diario recomendado adulto
+4. Pie: ${personas} personas, dieta ${dieta}
+
+IMPORTANTE: 
+- Usar EXACTAMENTE el plan proporcionado, sin cambios
+- Calcular información nutricional realista basada en las recetas
+- Solo HTML puro, sin explicaciones ni markdown
+- Incluir TODAS las vitaminas y minerales solicitados
+
+FORMATO DE RESPUESTA:
+Responde ÚNICAMENTE con el HTML completo.`;
 
     return prompt;
 }
@@ -666,10 +813,20 @@ INSTRUCCIONES:
 - Ajustar porciones para ${personas} ${personas === '1' ? 'persona' : 'personas'}
 - Incluir toda la información necesaria para preparar la receta
 
-⚠️ IMPORTANTE: DEBES RESPONDER ÚNICAMENTE EN FORMATO JSON ⚠️
+🚨 ATENCIÓN: RESPUESTA SOLO JSON - SIN EXCEPCIONES 🚨
 
-NO uses Markdown, NO uses texto explicativo, NO uses formato de receta tradicional.
-RESPONDE SOLAMENTE con el objeto JSON que se muestra a continuación:
+ESTRICTAMENTE PROHIBIDO:
+❌ Explicaciones, comentarios, notas
+❌ Frases como "Es importante", "Se recomienda", "Es crucial"
+❌ Cualquier texto antes o después del JSON
+❌ Consejos nutricionales adicionales
+
+OBLIGATORIO:
+✅ SOLO el JSON completo con los 7 días
+✅ Empezar directamente con bloque de código json
+✅ Terminar directamente con cierre de bloque
+
+RESPONDER ÚNICAMENTE ESTO:
 
 {
   "nombre": "${nombreReceta}",
@@ -727,7 +884,11 @@ async function llamarGeminiAPI(prompt, apiKey, maxRetries = 3) {
             parts: [{
                 text: prompt
             }]
-        }]
+        }],
+        generationConfig: {
+            maxOutputTokens: 8192,
+            temperature: 0.7
+        }
     };
 
     for (let intento = 0; intento < maxRetries; intento++) {
@@ -848,6 +1009,8 @@ app.get('/', (req, res) => {
 function procesarRespuestaJSON(respuesta) {
     console.log('🔄 Procesando respuesta de Gemini...');
     console.log('📥 Respuesta original (primeros 200 chars):', respuesta.substring(0, 200));
+    console.log('📏 Longitud total de respuesta:', respuesta.length);
+    console.log('📥 Respuesta original (últimos 200 chars):', respuesta.substring(respuesta.length - 200));
     
     // Si ya es JSON válido, devolverlo tal cual
     try {
@@ -862,9 +1025,18 @@ function procesarRespuestaJSON(respuesta) {
     const jsonMatches = respuesta.match(/```json\s*([\s\S]*?)\s*```/);
     if (jsonMatches) {
         try {
-            const extractedJSON = jsonMatches[1].trim();
+            let extractedJSON = jsonMatches[1].trim();
+            
+            // Buscar el final del JSON válido (última llave de cierre)
+            let lastBraceIndex = extractedJSON.lastIndexOf('}');
+            if (lastBraceIndex !== -1) {
+                // Cortar todo el texto después del último }
+                extractedJSON = extractedJSON.substring(0, lastBraceIndex + 1);
+                console.log('🔪 JSON cortado en el último }');
+            }
+            
             JSON.parse(extractedJSON); // Validar
-            console.log('✅ JSON extraído de código Markdown');
+            console.log('✅ JSON extraído y limpiado de código Markdown');
             return extractedJSON;
         } catch (e) {
             console.log('❌ JSON extraído no es válido');
@@ -889,6 +1061,76 @@ function procesarRespuestaJSON(respuesta) {
     // Si todo falla, devolver la respuesta original
     console.log('⚠️ No se pudo extraer JSON válido, devolviendo respuesta original');
     return respuesta;
+}
+
+function construirPromptInstruccionesPlan(planSemanal, personas, dieta) {
+    // Extraer todas las recetas del plan
+    const todasLasRecetas = [];
+    planSemanal.forEach(dia => {
+        dia.comidas.forEach(comida => {
+            todasLasRecetas.push({
+                dia: dia.dia,
+                tipo: comida.tipo,
+                nombre: comida.nombre,
+                calorias: comida.calorias,
+                proteinas: comida.proteinas,
+                grasas: comida.grasas,
+                carbohidratos: comida.carbohidratos
+            });
+        });
+    });
+
+    let prompt = `Eres un chef experto. Te proporciono un plan semanal de comidas y necesito que generes las instrucciones de preparación detalladas para TODAS las recetas.
+
+NÚMERO DE PERSONAS: ${personas}
+TIPO DE DIETA: ${dieta}
+
+RECETAS DEL PLAN:
+${todasLasRecetas.map(receta => `- ${receta.dia} - ${receta.tipo}: "${receta.nombre}" (${receta.calorias} kcal)`).join('\n')}
+
+INSTRUCCIONES:
+- Generar instrucciones detalladas para cada receta del plan
+- ${dieta !== 'ninguna' ? `Todas las recetas deben ser compatibles con dieta ${dieta}` : 'Sin restricciones dietéticas específicas'}
+- Ajustar ingredientes para ${personas} ${personas === '1' ? 'persona' : 'personas'}
+- Incluir tiempos de preparación y dificultad
+
+🚨 ATENCIÓN: RESPUESTA SOLO JSON - SIN EXCEPCIONES 🚨
+
+FORMATO DE RESPUESTA OBLIGATORIO:
+
+{
+  "recetas": [
+    {
+      "dia": "Lunes",
+      "tipo": "Desayuno",
+      "nombre": "[Nombre exacto de la receta]",
+      "tiempoPreparacion": "15 min",
+      "tiempoCoccion": "10 min",
+      "tiempoTotal": "25 min",
+      "dificultad": "Fácil",
+      "porciones": ${personas},
+      "ingredientes": [
+        {
+          "item": "Avena",
+          "cantidad": "100g",
+          "categoria": "Cereales"
+        }
+      ],
+      "instrucciones": [
+        "Paso 1: Hervir la leche en una cacerola mediana a fuego medio",
+        "Paso 2: Agregar la avena y cocinar removiendo constantemente 5 minutos",
+        "Paso 3: Añadir los frutos rojos y miel al gusto"
+      ]
+    }
+  ]
+}
+
+OBLIGATORIO:
+✅ SOLO el JSON completo con todas las recetas del plan
+✅ Una entrada por cada receta del plan proporcionado
+✅ Nombres exactos como aparecen en el plan`;
+
+    return prompt;
 }
 
 // Para desarrollo local

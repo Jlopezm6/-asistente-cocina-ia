@@ -67,54 +67,200 @@ document.addEventListener('DOMContentLoaded', () => {
         return true;
     }
     
-    // TEMPORAL: Función de prueba para PDF
-    window.testPDF = async function() {
-        console.log('🧪 Probando PDF simple...');
+    // --- VALIDACIÓN DE INGREDIENTES PELIGROSOS ---
+    const INGREDIENTES_PROHIBIDOS = [
+        // Químicos y tóxicos
+        'disolvente', 'disolventes', 'solvente', 'solventes', 'acetona', 'gasolina', 'queroseno',
+        'alcohol isopropílico', 'metanol', 'etanol industrial', 'amoniaco', 'lejía', 'cloro',
+        'ácido sulfúrico', 'ácido clorhídrico', 'soda cáustica', 'hidróxido de sodio',
+        'formaldehído', 'benceno', 'tolueno', 'xileno', 'mercurio', 'plomo', 'arsénico',
         
-        if (!checkHTML2PDF()) return;
+        // Sustancias no comestibles
+        'cadáver', 'cadáveres', 'carne podrida', 'carne en mal estado', 'moho', 'hongos tóxicos',
+        'setas venenosas', 'bayas venenosas', 'plantas tóxicas', 'hojas de ruibarbo',
+        'semillas de manzana', 'huesos de durazno', 'almendras amargas',
         
-        try {
-            const response = await fetch('/test-pdf');
-            const htmlSimple = await response.text();
-            
-            const pdfTemplate = document.getElementById('pdf-template');
-            pdfTemplate.innerHTML = htmlSimple;
-            pdfTemplate.style.display = 'block';
-            pdfTemplate.style.visibility = 'visible';
-            
-            const options = {
-                margin: [0.5, 0.5, 0.5, 0.5],
-                filename: 'test-calendario.pdf',
-                image: { type: 'jpeg', quality: 0.95 },
-                html2canvas: { 
-                    scale: 2,
-                    useCORS: true,
-                    allowTaint: true,
-                    backgroundColor: '#ffffff',
-                    logging: false,
-                    letterRendering: true
-                },
-                jsPDF: { 
-                    unit: 'in',
-                    format: 'a4',
-                    orientation: 'landscape',
-                    compress: true
-                }
-            };
-            
-            // Esperar más tiempo y asegurar que las fuentes se carguen
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            await document.fonts.ready;
-            await html2pdf().set(options).from(pdfTemplate).save();
-            
-            pdfTemplate.style.display = 'none';
-            pdfTemplate.style.visibility = 'hidden';
-            pdfTemplate.innerHTML = '';
-            
-            console.log('✅ PDF de prueba generado');
-        } catch (error) {
-            console.error('❌ Error en PDF de prueba:', error);
+        // Medicamentos y drogas
+        'medicamento', 'medicamentos', 'pastillas', 'píldoras', 'droga', 'drogas',
+        'marihuana', 'cannabis', 'cocaína', 'heroína', 'lsd', 'éxtasis',
+        
+        // Productos de limpieza
+        'detergente', 'jabón para platos', 'limpiador', 'desinfectante', 'blanqueador',
+        'suavizante', 'quitamanchas', 'lustramuebles', 'cera',
+        
+        // Otros peligrosos
+        'vidrio', 'metal', 'plástico', 'papel', 'cartón', 'madera', 'tierra', 'arena',
+        'pintura', 'barniz', 'pegamento', 'silicona', 'yeso', 'cemento', 'cal',
+        'insecticida', 'pesticida', 'veneno', 'raticida', 'herbicida',
+        'combustible', 'aceite de motor', 'grasa industrial', 'lubricante'
+    ];
+    
+    function validateIngredientsSafety(text) {
+        if (!text || typeof text !== 'string') return { isValid: true };
+        
+        const textLower = text.toLowerCase().trim();
+        const dangerousIngredients = [];
+        
+        for (const prohibited of INGREDIENTES_PROHIBIDOS) {
+            if (textLower.includes(prohibited.toLowerCase())) {
+                dangerousIngredients.push(prohibited);
+            }
         }
+        
+        if (dangerousIngredients.length > 0) {
+            return {
+                isValid: false,
+                dangerousIngredients,
+                message: `⚠️ Ingredientes no permitidos detectados: ${dangerousIngredients.join(', ')}. Por favor, usa solo ingredientes comestibles y seguros.`
+            };
+        }
+        
+        return { isValid: true };
+    }
+    
+    // --- FUNCIONES ALTERNATIVAS DE PDF ---
+    function openPrintWindow(htmlContent, title = 'Documento') {
+        try {
+            // Intentar abrir ventana emergente
+            const printWindow = window.open('', '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
+            
+            if (!printWindow) {
+                console.log('⚠️ Pop-up bloqueado, usando método alternativo...');
+                return openPrintInSamePage(htmlContent, title);
+            }
+            
+            const printContent = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <title>${title}</title>
+                    <style>
+                        @media print {
+                            body { margin: 0; padding: 20px; }
+                            @page { margin: 0.5in; size: A4 landscape; }
+                            .no-print { display: none; }
+                        }
+                        body { 
+                            font-family: 'Lato', Arial, sans-serif; 
+                            line-height: 1.4; 
+                            color: #212529;
+                            background: white;
+                            font-size: 12px;
+                        }
+                        h1 { 
+                            font-family: 'Poppins', Arial, sans-serif; 
+                            color: #2D6A4F; 
+                            font-weight: bold;
+                            text-align: center;
+                            margin-bottom: 20px;
+                        }
+                        h2, h3 { 
+                            font-family: 'Poppins', Arial, sans-serif; 
+                            color: #2D6A4F; 
+                            font-weight: 600;
+                        }
+                        table { 
+                            border-collapse: collapse; 
+                            width: 100%; 
+                            margin: 10px 0;
+                        }
+                        td, th { 
+                            border: 1px solid #DEE2E6; 
+                            padding: 8px; 
+                            vertical-align: top;
+                            font-size: 11px;
+                        }
+                        th { 
+                            background-color: #F8F9FA; 
+                            font-weight: bold;
+                            color: #2D6A4F;
+                        }
+                        .nutrition-info { 
+                            background-color: #F8F9FA; 
+                            padding: 5px; 
+                            border-radius: 3px;
+                            font-size: 10px;
+                        }
+                    </style>
+                </head>
+                <body>
+                    ${htmlContent}
+                    <script>
+                        window.onload = function() {
+                            setTimeout(() => {
+                                window.print();
+                                setTimeout(() => window.close(), 1000);
+                            }, 500);
+                        }
+                    </script>
+                </body>
+                </html>
+            `;
+            
+            printWindow.document.write(printContent);
+            printWindow.document.close();
+            return true;
+            
+        } catch (error) {
+            console.error('❌ Error abriendo ventana:', error);
+            return openPrintInSamePage(htmlContent, title);
+        }
+    }
+    
+    function openPrintInSamePage(htmlContent, title) {
+        // Método alternativo: descargar como archivo HTML
+        const blob = new Blob([`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <title>${title}</title>
+                <style>
+                    body { font-family: Arial, sans-serif; line-height: 1.4; padding: 20px; }
+                    h1, h2, h3 { color: #2D6A4F; }
+                    table { border-collapse: collapse; width: 100%; }
+                    td, th { border: 1px solid #ddd; padding: 8px; }
+                    @media print { @page { margin: 0.5in; } }
+                </style>
+            </head>
+            <body>
+                ${htmlContent}
+                <div class="no-print" style="margin-top: 30px; padding: 15px; background: #e8f5e8; border: 2px solid #2D6A4F; border-radius: 8px; page-break-before: always;">
+                    <p style="margin: 0; font-weight: bold; color: #2D6A4F;">💡 Para guardar como PDF:</p>
+                    <p style="margin: 5px 0 0 0; color: #2D6A4F;">• Usa Ctrl+P (Windows) o Cmd+P (Mac)</p>
+                    <p style="margin: 0; color: #2D6A4F;">• Selecciona "Guardar como PDF" en destino</p>
+                </div>
+            </body>
+            </html>
+        `], { type: 'text/html' });
+        
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = title.toLowerCase().replace(/\s+/g, '-') + '.html';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        alert('📄 Se ha descargado un archivo HTML. Ábrelo y usa Ctrl+P / Cmd+P para guardarlo como PDF.');
+        return false;
+    }
+
+    // TEMPORAL: Función de prueba para PDF
+    window.testPDF = function() {
+        console.log('🧪 Probando PDF alternativo...');
+        
+        const htmlSimple = `
+            <h1 style="color: red;">TEST PDF ALTERNATIVO</h1>
+            <p>Este es un texto de prueba usando window.print()</p>
+            <p>Si aparece este texto, el sistema funciona.</p>
+            <p>Usa Ctrl+P o Cmd+P para guardar como PDF.</p>
+        `;
+        
+        openPrintWindow(htmlSimple, 'Test PDF');
+        console.log('✅ Ventana de impresión abierta');
     };
 
     // --- LÓGICA PRINCIPAL ---
@@ -153,6 +299,18 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 data = JSON.parse(resultText);
                 console.log('✅ JSON parseado correctamente:', data);
+                
+                // Guardar plan generado si es plan semanal
+                if (currentMode === 'plan-semanal' && data.planSemanal) {
+                    window.lastGeneratedPlan = data;
+                    console.log('💾 Plan semanal guardado para PDFs:', {
+                        dias: data.planSemanal.length,
+                        primerDia: data.planSemanal[0]?.dia,
+                        comidas: data.planSemanal[0]?.comidas?.length
+                    });
+                } else {
+                    console.log('⚠️ No se guardó plan:', { currentMode, hasPlan: !!data.planSemanal });
+                }
             } catch (jsonError) {
                 console.error('❌ Error parseando JSON:', jsonError);
                 console.log('📄 Texto que causó el error:', resultText.substring(0, 500));
@@ -169,6 +327,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Almacenar datos para uso posterior
             window.lastResponseData = data;
             window.lastFormData = formData; // Almacenar formData para PDFs
+            // NO resetear plan aquí, se guardará cuando se parsee correctamente
             
             // Renderizar respuesta según el modo
             renderResponse(data, currentMode, formData);
@@ -290,11 +449,27 @@ document.addEventListener('DOMContentLoaded', () => {
                     alert('Por favor, ingresa al menos un ingrediente principal');
                     return false;
                 }
+                
+                // Validar ingredientes peligrosos
+                const safetyCheck = validateIngredientsSafety(data.ingredientesPrincipales);
+                if (!safetyCheck.isValid) {
+                    console.error('❌ Ingredientes peligrosos detectados:', safetyCheck.dangerousIngredients);
+                    alert(safetyCheck.message);
+                    return false;
+                }
                 break;
                 
             case 'limpia-neveras':
                 if (!data.ingredientes) {
                     alert('Por favor, ingresa los ingredientes que tienes en la nevera');
+                    return false;
+                }
+                
+                // Validar ingredientes peligrosos
+                const safetyCheckNevera = validateIngredientsSafety(data.ingredientes);
+                if (!safetyCheckNevera.isValid) {
+                    console.error('❌ Ingredientes peligrosos detectados:', safetyCheckNevera.dangerousIngredients);
+                    alert(safetyCheckNevera.message);
                     return false;
                 }
                 break;
@@ -314,6 +489,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!data.comidasSeleccionadas || data.comidasSeleccionadas.length === 0) {
                     alert('Por favor, selecciona al menos una comida para planificar');
                     return false;
+                }
+                
+                // Validar ingredientes peligrosos en preferencias (si existen)
+                if (data.preferencias && data.preferencias.trim() !== '') {
+                    const safetyCheckPlan = validateIngredientsSafety(data.preferencias);
+                    if (!safetyCheckPlan.isValid) {
+                        console.error('❌ Ingredientes peligrosos detectados en preferencias:', safetyCheckPlan.dangerousIngredients);
+                        alert(safetyCheckPlan.message);
+                        return false;
+                    }
                 }
                 break;
         }
@@ -592,6 +777,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     function renderFinalWeeklyPlan(data, originalFormData) {
+        // Guardar datos del plan para uso posterior (PDF con instrucciones)
+        window.lastPlanData = data;
+        
         const html = `
             <div class="weekly-plan-container">
                 <h3>📅 Tu Plan Semanal Personalizado</h3>
@@ -701,6 +889,20 @@ document.addEventListener('DOMContentLoaded', () => {
                                 P: ${comida.proteinas || 0}g | 
                                 G: ${comida.grasas || 0}g | 
                                 C: ${comida.carbohidratos || 0}g
+                                ${comida.vitaminaC || comida.vitaminaD || comida.calcio || comida.hierro ? `
+                                <div class="vitamins-info">
+                                    🍊 ${comida.vitaminaC ? `Vit.C: ${comida.vitaminaC}mg` : ''} 
+                                    ${comida.vitaminaD ? `Vit.D: ${comida.vitaminaD}μg` : ''} 
+                                    ${comida.calcio ? `Ca: ${comida.calcio}mg` : ''} 
+                                    ${comida.hierro ? `Fe: ${comida.hierro}mg` : ''}
+                                </div>` : ''}
+                                ${comida.preparacion && comida.preparacion.length > 0 ? `
+                                <div class="preparation-steps">
+                                    <span class="prep-title">👨‍🍳 Preparación:</span>
+                                    <ol class="prep-list">
+                                        ${comida.preparacion.map(paso => `<li>${paso}</li>`).join('')}
+                                    </ol>
+                                </div>` : ''}
                             </div>
                         </div>
                     `).join('')}
@@ -991,14 +1193,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     async function downloadCalendarPDF() {
-        if (!window.lastFormData) {
+        if (!window.lastFormData || !window.lastPlanData) {
             alert('No hay datos de plan disponibles. Genera primero un plan semanal.');
             return;
         }
-        
-        if (!checkHTML2PDF()) return;
-        
-        console.log('📅 Datos que se enviarán para calendario PDF:', window.lastFormData);
         
         const btn = document.getElementById('download-calendar-btn');
         const originalText = btn.textContent;
@@ -1006,87 +1204,16 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.disabled = true;
         
         try {
-            // Llamar al nuevo endpoint para generar calendario PDF
-            const response = await fetch('/api/generate-calendar-pdf', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(window.lastFormData),
-            });
+            console.log('📄 Generando calendario con nueva función local...');
             
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
-                console.error('❌ Error del servidor:', errorData);
-                throw new Error(errorData.error || `HTTP ${response.status}`);
-            }
+            // Usar mi nueva función generateCalendarHTML
+            const htmlCalendario = generateCalendarHTML(window.lastPlanData);
             
-            const result = await response.json();
-            console.log('✅ Respuesta del servidor:', result);
-            let htmlCalendario = result.htmlCalendario;
+            // Abrir ventana de impresión directamente
+            console.log('🖨️ Abriendo ventana de impresión para calendario...');
+            openPrintWindow(htmlCalendario, 'Calendario Semanal');
             
-            // Limpiar markdown si existe
-            if (htmlCalendario.startsWith('```html')) {
-                htmlCalendario = htmlCalendario.substring(7, htmlCalendario.length - 3).trim();
-            }
-            if (htmlCalendario.startsWith('```')) {
-                htmlCalendario = htmlCalendario.substring(3, htmlCalendario.length - 3).trim();
-            }
-            
-            if (!pdfTemplate) {
-                throw new Error("Plantilla PDF no encontrada");
-            }
-            
-            // Insertar HTML generado por la IA
-            console.log('📄 HTML limpio para PDF (primeros 200 chars):', htmlCalendario.substring(0, 200));
-            pdfTemplate.innerHTML = htmlCalendario;
-            pdfTemplate.style.display = 'block';
-            pdfTemplate.style.visibility = 'visible';
-            pdfTemplate.style.position = 'absolute';
-            pdfTemplate.style.top = '0';
-            pdfTemplate.style.left = '0';
-            pdfTemplate.style.width = '100%';
-            pdfTemplate.style.height = 'auto';
-            pdfTemplate.style.zIndex = '9999';
-            
-            // Configurar opciones mejoradas para calendario (landscape)
-            const options = {
-                margin: [0.5, 0.5, 0.5, 0.5],
-                filename: 'calendario-semanal.pdf',
-                image: { type: 'jpeg', quality: 0.95 },
-                html2canvas: { 
-                    scale: 2,
-                    useCORS: true,
-                    allowTaint: true,
-                    backgroundColor: '#ffffff',
-                    logging: false,
-                    letterRendering: true,
-                    onrendered: function() {
-                        console.log('Canvas renderizado para calendario');
-                    }
-                },
-                jsPDF: { 
-                    unit: 'in',
-                    format: 'a4',
-                    orientation: 'landscape',
-                    compress: true
-                },
-                pagebreak: { mode: 'avoid-all' }
-            };
-            
-            // Esperar a que el contenido se renderice completamente
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            
-            // Asegurar que las fuentes se carguen
-            await document.fonts.ready;
-            
-            // Generar PDF usando html2pdf
-            await html2pdf().set(options).from(pdfTemplate).save();
-            
-            // Limpiar template
-            pdfTemplate.innerHTML = '';
-            pdfTemplate.style.display = 'none';
-            pdfTemplate.style.visibility = 'hidden';
-            
-            btn.textContent = '✅ Calendario PDF descargado';
+            btn.textContent = '✅ Ventana de impresión abierta';
             btn.style.backgroundColor = '#22c55e';
             
             setTimeout(() => {
@@ -1099,117 +1226,59 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Error generando calendario PDF:', error);
             btn.textContent = originalText;
             btn.disabled = false;
-            
-            // Limpiar template en caso de error
-            pdfTemplate.innerHTML = '';
-            pdfTemplate.style.display = 'none';
-            pdfTemplate.style.visibility = 'hidden';
-            
-            if (error.message.includes('429') || error.message.includes('Demasiadas')) {
-                alert('Demasiadas peticiones a la IA. Por favor espera 30 segundos e inténtalo de nuevo.');
-            } else if (error.message.includes('html2pdf')) {
-                alert('Error al generar el PDF. Verifica que tengas conexión a internet e inténtalo de nuevo.');
-            } else {
-                alert('Error al generar el calendario PDF. Inténtalo de nuevo.');
-            }
+            alert('Error al generar el calendario PDF. Inténtalo de nuevo.');
         }
     }
     
     async function downloadRecipesPDF() {
-        if (!window.lastFormData) {
+        if (!window.lastFormData || !window.lastPlanData) {
             alert('No hay datos de plan disponibles. Genera primero un plan semanal.');
             return;
         }
         
-        if (!checkHTML2PDF()) return;
-        
         const btn = document.getElementById('download-recipes-btn');
         const originalText = btn.textContent;
-        btn.textContent = '📖 Generando recetario...';
+        btn.textContent = '📖 Obteniendo instrucciones...';
         btn.disabled = true;
         
         try {
-            // Llamar al nuevo endpoint para generar recetario PDF
-            const response = await fetch('/api/generate-recipes-pdf', {
+            // Paso 1: Obtener las instrucciones de todas las recetas
+            const response = await fetch('/api/instrucciones-plan', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(window.lastFormData),
+                body: JSON.stringify({
+                    planSemanal: window.lastPlanData.planSemanal,
+                    personas: window.lastFormData.personas,
+                    dieta: window.lastFormData.dieta
+                }),
             });
             
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}`);
             }
             
+            btn.textContent = '📖 Generando recetario...';
+            
             const result = await response.json();
-            let htmlRecetario = result.htmlRecetario;
+            let instrucciones = result.instrucciones;
             
-            // Limpiar markdown si existe
-            if (htmlRecetario.startsWith('```html')) {
-                htmlRecetario = htmlRecetario.substring(7, htmlRecetario.length - 3).trim();
-            }
-            if (htmlRecetario.startsWith('```')) {
-                htmlRecetario = htmlRecetario.substring(3, htmlRecetario.length - 3).trim();
-            }
-            
-            if (!pdfTemplate) {
-                throw new Error("Plantilla PDF no encontrada");
-            }
-            
-            // Insertar HTML generado por la IA
-            console.log('📖 HTML limpio para recetario (primeros 200 chars):', htmlRecetario.substring(0, 200));
-            pdfTemplate.innerHTML = htmlRecetario;
-            pdfTemplate.style.display = 'block';
-            pdfTemplate.style.visibility = 'visible';
-            pdfTemplate.style.position = 'absolute';
-            pdfTemplate.style.top = '0';
-            pdfTemplate.style.left = '0';
-            pdfTemplate.style.width = '100%';
-            pdfTemplate.style.height = 'auto';
-            pdfTemplate.style.zIndex = '9999';
-            
-            // Configurar opciones mejoradas para recetario (portrait)
-            const options = {
-                margin: [0.7, 0.5, 0.7, 0.5],
-                filename: 'recetario-semanal.pdf',
-                image: { type: 'jpeg', quality: 0.95 },
-                html2canvas: { 
-                    scale: 2,
-                    useCORS: true,
-                    allowTaint: true,
-                    backgroundColor: '#ffffff',
-                    logging: false,
-                    letterRendering: true,
-                    onrendered: function() {
-                        console.log('Canvas renderizado para recetario');
-                    }
-                },
-                jsPDF: { 
-                    unit: 'in',
-                    format: 'a4',
-                    orientation: 'portrait',
-                    compress: true
-                },
-                pagebreak: { 
-                    mode: ['avoid-all', 'css', 'legacy'],
-                    avoid: ['tr', '.recipe-item']
+            // Parse JSON si viene como string
+            if (typeof instrucciones === 'string') {
+                // Limpiar markdown si existe
+                if (instrucciones.startsWith('```json')) {
+                    instrucciones = instrucciones.substring(7, instrucciones.length - 3).trim();
                 }
-            };
+                instrucciones = JSON.parse(instrucciones);
+            }
             
-            // Esperar a que el contenido se renderice completamente
-            await new Promise(resolve => setTimeout(resolve, 1500));
+            // Paso 2: Generar HTML del recetario
+            const htmlRecetario = generateRecipesHTML(instrucciones.recetas);
             
-            // Asegurar que las fuentes se carguen
-            await document.fonts.ready;
+            // Paso 3: Abrir ventana de impresión
+            console.log('🖨️ Abriendo ventana de impresión para recetario...');
+            openPrintWindow(htmlRecetario, 'Recetario Semanal');
             
-            // Generar PDF usando html2pdf
-            await html2pdf().set(options).from(pdfTemplate).save();
-            
-            // Limpiar template
-            pdfTemplate.innerHTML = '';
-            pdfTemplate.style.display = 'none';
-            pdfTemplate.style.visibility = 'hidden';
-            
-            btn.textContent = '✅ Recetario PDF descargado';
+            btn.textContent = '✅ Ventana de impresión abierta';
             btn.style.backgroundColor = '#22c55e';
             
             setTimeout(() => {
@@ -1223,41 +1292,381 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.textContent = originalText;
             btn.disabled = false;
             
-            // Limpiar template en caso de error
-            pdfTemplate.innerHTML = '';
-            pdfTemplate.style.display = 'none';
-            pdfTemplate.style.visibility = 'hidden';
-            
             if (error.message.includes('429') || error.message.includes('Demasiadas')) {
                 alert('Demasiadas peticiones a la IA. Por favor espera 30 segundos e inténtalo de nuevo.');
-            } else if (error.message.includes('html2pdf')) {
-                alert('Error al generar el PDF. Verifica que tengas conexión a internet e inténtalo de nuevo.');
             } else {
                 alert('Error al generar el recetario PDF. Inténtalo de nuevo.');
             }
         }
     }
     
-    function generateCalendarHTML(data) {
-        return `
-            <div style="font-family: 'Poppins', 'Lato', Arial, sans-serif; width: 100%; padding: 20px;">
-                <h1 style="text-align: center; color: #2D6A4F; margin-bottom: 30px;">📅 CALENDARIO SEMANAL</h1>
-                <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px;">
-                    ${data.planSemanal.map(dia => `
-                        <div style="border: 2px solid #DEE2E6; border-radius: 8px; padding: 10px; background: #F8F9FA;">
-                            <h4 style="color: #2D6A4F; margin: 0 0 10px 0; font-size: 14px; text-align: center;">${dia.dia}</h4>
-                            ${dia.comidas.map(comida => `
-                                <div style="background: white; margin-bottom: 8px; padding: 6px; border-radius: 4px; font-size: 10px;">
-                                    <div style="font-weight: bold; color: #FF8C42;">${getMealEmoji(comida.tipo)} ${comida.tipo}</div>
-                                    <div style="color: #212529; margin: 2px 0;">${comida.nombre}</div>
-                                    <div style="color: #6C757D; font-size: 9px;">${comida.calorias || 0} kcal</div>
-                                </div>
+    function generateRecipesHTML(recetas) {
+        const recetasHTML = recetas.map(receta => `
+            <div class="recipe-item">
+                <div class="recipe-header">
+                    <h3>${receta.nombre}</h3>
+                    <div class="recipe-meta">
+                        <span class="recipe-day">${receta.dia}</span> • 
+                        <span class="recipe-type">${receta.tipo}</span> • 
+                        <span class="recipe-time">${receta.tiempoTotal || '30 min'}</span> • 
+                        <span class="recipe-difficulty">${receta.dificultad || 'Fácil'}</span>
+                    </div>
+                </div>
+                
+                <div class="recipe-content">
+                    <div class="ingredients-section">
+                        <h4>🛒 Ingredientes (${receta.porciones || '2'} personas)</h4>
+                        <ul class="ingredients-list">
+                            ${receta.ingredientes.map(ing => `
+                                <li><strong>${ing.cantidad || ''}</strong> ${ing.item}</li>
                             `).join('')}
-                            ${dia.totalCalorias ? `<div style="text-align: center; font-weight: bold; color: #2D6A4F; font-size: 11px; margin-top: 8px;">Total: ${dia.totalCalorias} kcal</div>` : ''}
-                        </div>
-                    `).join('')}
+                        </ul>
+                    </div>
+                    
+                    <div class="instructions-section">
+                        <h4>👨‍🍳 Instrucciones</h4>
+                        <ol class="instructions-list">
+                            ${receta.instrucciones.map(paso => `
+                                <li>${paso}</li>
+                            `).join('')}
+                        </ol>
+                    </div>
                 </div>
             </div>
+        `).join('');
+
+        return `
+            <div style="font-family: 'Poppins', 'Lato', Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto;">
+                <div style="text-align: center; margin-bottom: 30px;">
+                    <h1 style="color: #2D6A4F; margin-bottom: 10px;">📖 Recetario Semanal</h1>
+                    <p style="color: #666; font-size: 16px;">Instrucciones detalladas para tu plan nutricional</p>
+                </div>
+                
+                <style>
+                    .recipe-item {
+                        border: 1px solid #ddd;
+                        border-radius: 8px;
+                        margin-bottom: 25px;
+                        padding: 20px;
+                        background: #ffffff;
+                        page-break-inside: avoid;
+                    }
+                    .recipe-header h3 {
+                        color: #2D6A4F;
+                        margin: 0 0 8px 0;
+                        font-size: 20px;
+                    }
+                    .recipe-meta {
+                        color: #666;
+                        font-size: 14px;
+                        margin-bottom: 15px;
+                    }
+                    .recipe-content {
+                        display: grid;
+                        grid-template-columns: 1fr 2fr;
+                        gap: 20px;
+                    }
+                    .ingredients-section h4,
+                    .instructions-section h4 {
+                        color: #FF8C42;
+                        margin: 0 0 10px 0;
+                        font-size: 16px;
+                    }
+                    .ingredients-list {
+                        margin: 0;
+                        padding-left: 20px;
+                    }
+                    .ingredients-list li {
+                        margin-bottom: 5px;
+                        color: #333;
+                    }
+                    .instructions-list {
+                        margin: 0;
+                        padding-left: 20px;
+                    }
+                    .instructions-list li {
+                        margin-bottom: 8px;
+                        color: #333;
+                        line-height: 1.4;
+                    }
+                    @media print {
+                        .recipe-item {
+                            page-break-inside: avoid;
+                            margin-bottom: 20px;
+                        }
+                    }
+                </style>
+                
+                ${recetasHTML}
+            </div>
+        `;
+    }
+    
+    function generateCalendarHTML(data) {
+        // Funciones auxiliares para generar el HTML
+        function getUniqueMealTypes(planData) {
+            const mealTypes = new Set();
+            planData.planSemanal.forEach(dia => {
+                dia.comidas.forEach(comida => {
+                    mealTypes.add(comida.tipo);
+                });
+            });
+            return Array.from(mealTypes);
+        }
+        
+        function calculateDayNutrition(dia, nutrient) {
+            if (!dia || !dia.comidas) return 0;
+            return dia.comidas.reduce((total, comida) => {
+                return total + (comida[nutrient] || 0);
+            }, 0);
+        }
+        
+        const uniqueMealTypes = getUniqueMealTypes(data);
+        
+        return `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <title>Calendario Semanal Nutricional</title>
+                <style>
+                    @page { 
+                        size: A4 landscape; 
+                        margin: 15mm; 
+                    }
+                    body { 
+                        font-family: 'Arial', sans-serif; 
+                        margin: 0; 
+                        padding: 0; 
+                        background: #f8f9fa;
+                        color: #333;
+                    }
+                    .container { 
+                        background: white; 
+                        max-width: 100%; 
+                        margin: 0 auto; 
+                        border-radius: 8px; 
+                        overflow: hidden;
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                    }
+                    .header { 
+                        background: linear-gradient(135deg, #2D6A4F 0%, #3f906f 100%); 
+                        color: white; 
+                        padding: 20px; 
+                        text-align: center; 
+                    }
+                    .header h1 { 
+                        margin: 0; 
+                        font-size: 24px; 
+                        font-weight: bold; 
+                    }
+                    .header p { 
+                        margin: 5px 0 0 0; 
+                        opacity: 0.9; 
+                        font-size: 14px; 
+                    }
+                    
+                    /* Calendar Table - Comidas por día */
+                    .calendar-section { 
+                        padding: 20px; 
+                    }
+                    .section-title { 
+                        color: #2D6A4F; 
+                        font-size: 18px; 
+                        margin-bottom: 15px; 
+                        text-align: center; 
+                        border-bottom: 2px solid #2D6A4F; 
+                        padding-bottom: 5px; 
+                    }
+                    .calendar-table { 
+                        width: 100%; 
+                        border-collapse: collapse; 
+                        margin-bottom: 25px;
+                    }
+                    .calendar-table th { 
+                        background: #2D6A4F; 
+                        color: white; 
+                        padding: 12px 8px; 
+                        text-align: center; 
+                        font-weight: bold; 
+                        font-size: 12px;
+                    }
+                    .calendar-table td { 
+                        border: 1px solid #dee2e6; 
+                        padding: 10px 8px; 
+                        vertical-align: top; 
+                        font-size: 10px; 
+                    }
+                    .meal-type { 
+                        font-weight: bold; 
+                        color: #FF8C42; 
+                        text-align: center; 
+                        padding: 8px; 
+                        background: #fff5f0;
+                    }
+                    .meal-name { 
+                        font-weight: 600; 
+                        color: #333; 
+                        margin-bottom: 3px; 
+                    }
+                    .meal-calories { 
+                        color: #FF8C42; 
+                        font-weight: bold; 
+                        font-size: 9px; 
+                    }
+                    
+                    /* Nutrition Summary - Segunda página/sección */
+                    .nutrition-section { 
+                        padding: 20px; 
+                        background: #f8f9fa; 
+                        page-break-before: always;
+                    }
+                    .nutrition-grid { 
+                        display: grid; 
+                        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); 
+                        gap: 15px; 
+                        margin-top: 15px; 
+                    }
+                    .day-nutrition { 
+                        background: white; 
+                        border-radius: 8px; 
+                        padding: 15px; 
+                        border-left: 4px solid #2D6A4F;
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                    }
+                    .day-title { 
+                        color: #2D6A4F; 
+                        font-weight: bold; 
+                        font-size: 14px; 
+                        margin-bottom: 10px; 
+                        text-align: center; 
+                    }
+                    .nutrition-item { 
+                        display: flex; 
+                        justify-content: space-between; 
+                        margin-bottom: 5px; 
+                        font-size: 11px; 
+                    }
+                    .nutrition-item strong { 
+                        color: #555; 
+                    }
+                    .nutrition-value { 
+                        font-weight: bold; 
+                        color: #FF8C42; 
+                    }
+                    .total-calories { 
+                        background: #FF8C42; 
+                        color: white; 
+                        padding: 8px; 
+                        border-radius: 4px; 
+                        text-align: center; 
+                        font-weight: bold; 
+                        margin-top: 10px; 
+                    }
+                    
+                    .footer { 
+                        background: #2D6A4F; 
+                        color: white; 
+                        padding: 15px; 
+                        text-align: center; 
+                        font-size: 12px; 
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <!-- PÁGINA 1: CALENDARIO DE COMIDAS -->
+                    <div class="header">
+                        <h1>📅 CALENDARIO SEMANAL NUTRICIONAL</h1>
+                        <p>Plan personalizado para ${data.personas || 2} persona${(data.personas || 2) > 1 ? 's' : ''} | Dieta: ${data.dieta || 'General'}</p>
+                    </div>
+                    
+                    <div class="calendar-section">
+                        <h2 class="section-title">🍽️ Menú Semanal</h2>
+                        <table class="calendar-table">
+                            <thead>
+                                <tr>
+                                    <th style="width:12%;">Comida</th>
+                                    ${data.planSemanal.map(dia => `<th>${dia.dia}</th>`).join('')}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${uniqueMealTypes.map(tipoComida => `
+                                    <tr>
+                                        <td class="meal-type">${getMealEmoji(tipoComida)} ${tipoComida}</td>
+                                        ${data.planSemanal.map(dia => {
+                                            const comida = dia.comidas.find(c => c.tipo === tipoComida);
+                                            return `<td>
+                                                ${comida ? `
+                                                    <div class="meal-name">${comida.nombre}</div>
+                                                    <div class="meal-calories">${comida.calorias || 0} kcal</div>
+                                                ` : '<div style="color: #999;">-</div>'}
+                                            </td>`;
+                                        }).join('')}
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- PÁGINA 2: INFORMACIÓN NUTRICIONAL DETALLADA -->
+                    <div class="nutrition-section">
+                        <h2 class="section-title">📊 Información Nutricional Detallada</h2>
+                        <div class="nutrition-grid">
+                            ${data.planSemanal.map(dia => `
+                                <div class="day-nutrition">
+                                    <div class="day-title">${dia.dia}</div>
+                                    
+                                    <div class="nutrition-item">
+                                        <strong>Proteínas:</strong>
+                                        <span class="nutrition-value">${(dia.resumenNutricional?.proteinas || calculateDayNutrition(dia, 'proteinas')).toFixed(1)}g</span>
+                                    </div>
+                                    <div class="nutrition-item">
+                                        <strong>Grasas:</strong>
+                                        <span class="nutrition-value">${(dia.resumenNutricional?.grasas || calculateDayNutrition(dia, 'grasas')).toFixed(1)}g</span>
+                                    </div>
+                                    <div class="nutrition-item">
+                                        <strong>Carbohidratos:</strong>
+                                        <span class="nutrition-value">${(dia.resumenNutricional?.carbohidratos || calculateDayNutrition(dia, 'carbohidratos')).toFixed(1)}g</span>
+                                    </div>
+                                    <div class="nutrition-item">
+                                        <strong>Fibra:</strong>
+                                        <span class="nutrition-value">${(dia.resumenNutricional?.fibra || calculateDayNutrition(dia, 'fibra')).toFixed(1)}g</span>
+                                    </div>
+                                    
+                                    <hr style="margin: 10px 0; border: 1px solid #eee;">
+                                    
+                                    <div class="nutrition-item">
+                                        <strong>Vitamina C:</strong>
+                                        <span class="nutrition-value">${(dia.resumenNutricional?.vitaminaC || calculateDayNutrition(dia, 'vitaminaC')).toFixed(1)}mg</span>
+                                    </div>
+                                    <div class="nutrition-item">
+                                        <strong>Vitamina D:</strong>
+                                        <span class="nutrition-value">${(dia.resumenNutricional?.vitaminaD || calculateDayNutrition(dia, 'vitaminaD')).toFixed(1)}μg</span>
+                                    </div>
+                                    <div class="nutrition-item">
+                                        <strong>Calcio:</strong>
+                                        <span class="nutrition-value">${(dia.resumenNutricional?.calcio || calculateDayNutrition(dia, 'calcio')).toFixed(0)}mg</span>
+                                    </div>
+                                    <div class="nutrition-item">
+                                        <strong>Hierro:</strong>
+                                        <span class="nutrition-value">${(dia.resumenNutricional?.hierro || calculateDayNutrition(dia, 'hierro')).toFixed(1)}mg</span>
+                                    </div>
+                                    
+                                    <div class="total-calories">
+                                        Total: ${dia.totalCalorias || calculateDayNutrition(dia, 'calorias')} kcal
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    
+                    <div class="footer">
+                        <p><strong>Plan Nutricional Personalizado</strong> | Los valores nutricionales son aproximados</p>
+                    </div>
+                </div>
+            </body>
+            </html>
         `;
     }
     
@@ -1283,6 +1692,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 ).join('') : '<p>No hay recetas disponibles para generar el recetario.</p>'}
             </div>
         `;
+    }
+    
+    // === FUNCIONES AUXILIARES PARA HTML ===
+    
+    function getUniqueMealTypes(data) {
+        const mealTypes = new Set();
+        data.planSemanal.forEach(dia => {
+            dia.comidas.forEach(comida => {
+                mealTypes.add(comida.tipo);
+            });
+        });
+        return Array.from(mealTypes);
+    }
+    
+    function calculateDayNutrition(dia, nutrient) {
+        if (!dia || !dia.comidas) return 0;
+        return dia.comidas.reduce((total, comida) => {
+            return total + (comida[nutrient] || 0);
+        }, 0);
     }
     
     // === FUNCIONES DE INTERACTIVIDAD ===
