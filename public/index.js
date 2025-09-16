@@ -102,7 +102,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const dangerousIngredients = [];
         
         for (const prohibited of INGREDIENTES_PROHIBIDOS) {
-            if (textLower.includes(prohibited.toLowerCase())) {
+            // Usar regex para buscar palabras completas, no substrings
+            const regex = new RegExp(`\\b${prohibited.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'g');
+            if (regex.test(textLower)) {
                 dangerousIngredients.push(prohibited);
             }
         }
