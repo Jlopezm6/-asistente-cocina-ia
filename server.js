@@ -876,7 +876,7 @@ REQUISITOS CRÍTICOS:
     return prompt;
 }
 
-async function llamarGeminiAPI(prompt, apiKey, maxRetries = 3) {
+async function llamarGeminiAPI(prompt, apiKey, maxRetries = 5) {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent`;
     
     const requestBody = {
@@ -912,16 +912,23 @@ async function llamarGeminiAPI(prompt, apiKey, maxRetries = 3) {
                 }
             }
 
-            // Si es error 503 o 429, intentar retry con backoff
-            if (response.status === 503 || response.status === 429) {
-                const waitTime = Math.pow(2, intento) * 1000; // 1s, 2s, 4s
-                console.log(`⏳ Intento ${intento + 1}/${maxRetries} falló (${response.status}). Reintentando en ${waitTime}ms...`);
+            // Si es error 503, 429, o 500 (errores temporales), intentar retry con backoff
+            if (response.status === 503 || response.status === 429 || response.status === 500) {
+                const waitTime = Math.pow(2, intento) * 1500 + Math.random() * 1000; // 1.5-2.5s, 3-4s, 6-7s con jitter
+                console.log(`⏳ Intento ${intento + 1}/${maxRetries} falló (${response.status}). Reintentando en ${Math.round(waitTime)}ms...`);
                 
                 if (intento < maxRetries - 1) {
                     await new Promise(resolve => setTimeout(resolve, waitTime));
                     continue;
                 } else {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                    // En el último intento, dar un mensaje más descriptivo
+                    if (response.status === 503) {
+                        throw new Error('El servicio de IA está temporalmente sobrecargado. Espera 30 segundos e inténtalo de nuevo.');
+                    } else if (response.status === 429) {
+                        throw new Error('Demasiadas peticiones. Espera 60 segundos e inténtalo de nuevo.');
+                    } else {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
                 }
             }
 

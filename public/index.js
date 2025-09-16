@@ -336,14 +336,14 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Error en la generación:', error);
             
             let errorMessage = 'Error desconocido';
-            if (error.message.includes('503')) {
-                errorMessage = '🔄 El servicio de IA está temporalmente sobrecargado. Por favor, espera unos minutos e inténtalo de nuevo.';
-            } else if (error.message.includes('429')) {
-                errorMessage = '⏰ Demasiadas peticiones. Por favor, espera 30 segundos e inténtalo de nuevo.';
+            if (error.message.includes('503') || error.message.includes('sobrecargado')) {
+                errorMessage = '🔄 <strong>Servicio temporalmente no disponible</strong><br><br>El servicio de IA está muy ocupado en este momento. <br><br>✅ <strong>Solución:</strong> Espera 30-60 segundos e inténtalo de nuevo.';
+            } else if (error.message.includes('429') || error.message.includes('Demasiadas peticiones')) {
+                errorMessage = '⏰ <strong>Límite de peticiones alcanzado</strong><br><br>Has hecho demasiadas peticiones muy rápido.<br><br>✅ <strong>Solución:</strong> Espera 60 segundos antes de intentarlo de nuevo.';
             } else if (error.message.includes('500')) {
-                errorMessage = '⚠️ Error interno del servidor. Por favor, inténtalo de nuevo.';
+                errorMessage = '⚠️ <strong>Error interno del servidor</strong><br><br>Problema temporal del servidor.<br><br>✅ <strong>Solución:</strong> Inténtalo de nuevo en unos segundos.';
             } else {
-                errorMessage = `❌ Error: ${error.message}`;
+                errorMessage = `❌ <strong>Error:</strong> ${error.message}`;
             }
             
             responseDiv.innerHTML = `<div class="error">${errorMessage}</div>`;
